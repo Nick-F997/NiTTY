@@ -1,9 +1,22 @@
 #include "libopencm3/stm32/rcc.h"
 #include "libopencm3/stm32/gpio.h"
-
+#include "libopencm3/cm3/systick.h"
+#include "libopencm3/cm3/vector.h"
 
 #define BUILTIN_LD2_PORT (GPIOA)
 #define BUILTIN_LD2_PIN (GPIO5)
+#define CPU_FREQ (84000000)
+#define SYSTICK_FREQ (1000)
+
+volatile uint64_t ticks = 0;
+void sys_tick_handler(void) {
+    ticks++;
+}
+
+static uint64_t get_ticks(void)
+{
+    return ticks;
+}
 
 static void loc_rcc_setup(void)
 {
@@ -16,25 +29,26 @@ static void loc_gpio_setup(void)
     gpio_mode_setup(BUILTIN_LD2_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, BUILTIN_LD2_PIN);
 }
 
-static void loc_delay(uint32_t cycles)
+static void loc_systick_setup(void)
 {
-    for (uint32_t i = 0; i < cycles; i++)
-    {
-        __asm__("nop");
-    }
+    systick_set_frequency(SYSTICK_FREQ, CPU_FREQ);
+    systick_counter_enable();
+    systick_interrupt_enable();
 }
 
 int main(void)
 {
+    loc_systick_setup();
     loc_rcc_setup();
     loc_gpio_setup();
 
+    uint64_t start_time = get_ticks();
+
     while (1)
     {
-        for (uint32_t i = 0; i < 84000000; i+= 10000000)
-        {
+        if (get_ticks() - start_time >= 100) {
             gpio_toggle(BUILTIN_LD2_PORT, BUILTIN_LD2_PIN);
-            loc_delay((uint32_t)(i / 8));
+            start_time = get_ticks();
         }
     }
 
