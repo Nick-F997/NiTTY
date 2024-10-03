@@ -3,7 +3,7 @@
 #include "libopencm3/cm3/scb.h" // For vector table offset register
 
 #include "core/system.h"
-#include "core/timer.h"
+#include "sys_timer.h"
 
 #define BOOTLOADER_SIZE (0x8000U)
 
@@ -36,7 +36,7 @@ int main(void)
 
     while (1)
     {
-        if (coreGetTicks() - start_time >= 10)
+        if (coreGetTicks() - start_time >= 1)
         {
             duty_cycle += incrementer;
             if (duty_cycle > 100.0f || duty_cycle <= 0.0f)

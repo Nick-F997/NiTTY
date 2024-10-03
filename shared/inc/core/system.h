@@ -1,5 +1,5 @@
-#ifndef SYSTEM_H_
-#define SYSTEM_H_
+#ifndef LOCAL_SYSTEM_H_
+#define LOCAL_SYSTEM_H_
 
 #include "common-includes.h"
 
