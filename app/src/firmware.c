@@ -60,11 +60,13 @@ int main(void)
             start_time = coreGetTicks();
         }
 
-        if (coreUartDataAvailable()) 
+        while (coreUartDataAvailable()) 
         {
             uint8_t data = coreUartReadByte();
             coreUartWriteByte(data + 1);
         }
+    
+        coreSystemDelay(1000);
     }
     // Should never get here
     return 0;

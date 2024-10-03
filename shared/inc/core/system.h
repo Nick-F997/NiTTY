@@ -8,6 +8,6 @@
 
 void coreSystemSetup(void);
 uint64_t coreGetTicks(void);
-
+void coreSystemDelay(uint64_t milliseconds);
 
 #endif

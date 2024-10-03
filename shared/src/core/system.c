@@ -56,3 +56,14 @@ uint64_t coreGetTicks(void)
     return ticks;
 }
 
+/**
+ * @brief Delays the system for milliseconds. Blocking mode.
+ * 
+ * @param milliseconds amount to delay system by
+ */
+void coreSystemDelay(uint64_t milliseconds)
+{
+    uint64_t end_time = coreGetTicks() + milliseconds;
+    while (coreGetTicks() < end_time);
+}
+
