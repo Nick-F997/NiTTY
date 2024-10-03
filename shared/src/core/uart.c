@@ -5,7 +5,7 @@
 #include "core/uart.h"
 #include "core/ring-buffer.h"
 
-#define RING_BUFFER_SIZE (64) // Must be a power of two!
+#define RING_BUFFER_SIZE (128) // Must be a power of two! approx ~10ms of latency
 
 static ring_buffer_t rb = {0U}; // the ringbuffer object
 static uint8_t data_buffer[RING_BUFFER_SIZE] = {0U}; // buffer in ring buffer.
