@@ -6,6 +6,10 @@
 #include "core/uart.h"
 #include "sys_timer.h"
 
+#include <stdio.h>
+
+#include "board-control.h"
+
 #define BOOTLOADER_SIZE     (0x8000U)
 
 #define BUILTIN_LD2_PORT    (GPIOA)
@@ -22,11 +26,7 @@ static void loc_vector_setup(void) {
 
 static void loc_gpio_setup(void)
 {
-    // Enable GPIO rcc clock
     rcc_periph_clock_enable(RCC_GPIOA);
-    gpio_mode_setup(BUILTIN_LD2_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, BUILTIN_LD2_PIN); // Set LED2 pin to Alternative Function mode
-    gpio_set_af(BUILTIN_LD2_PORT, GPIO_AF1, BUILTIN_LD2_PIN);
-
     // GPIO setup for uart. Clock for peripheral is set elsewhere
     gpio_mode_setup(UART_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, UART_TX_PIN | UART_RX_PIN /* boolean or in order to set both pins*/);
     gpio_set_af(UART_PORT, GPIO_AF7, UART_TX_PIN | UART_RX_PIN); // See datasheet for function.
@@ -37,37 +37,23 @@ int main(void)
     loc_vector_setup();
     coreSystemSetup();
     loc_gpio_setup();
-    coreTimerSetup();
+    
     coreUartSetup(115200);
 
-    uint64_t start_time = coreGetTicks();
-    float duty_cycle = 0.0f;
-    float incrementer = 1.0f;
-
-    corePWMSetDutyCycle(duty_cycle);
+    BoardController *board = initBoard();
+    createDigitalPin(board, BUILTIN_LD2_PORT, BUILTIN_LD2_PIN, RCC_GPIOA, false, GPIO_PUPD_NONE);
 
     while (1)
     {
-        if (coreGetTicks() - start_time >= 1)
-        {
-            duty_cycle += incrementer;
-            if (duty_cycle > 100.0f || duty_cycle <= 0.0f)
-            {
-                incrementer *= -1.0f;
-            }
-
-            corePWMSetDutyCycle(duty_cycle);
-            start_time = coreGetTicks();
-        }
-
-        while (coreUartDataAvailable()) 
-        {
-            uint8_t data = coreUartReadByte();
-            coreUartWriteByte(data + 1);
-        }
-    
-        coreSystemDelay(1000);
+        uint64_t start_time = coreGetTicks();
+        toggleDigitalOutputPin(board, BUILTIN_LD2_PORT, BUILTIN_LD2_PIN);
+        uint64_t end_time = coreGetTicks();
+        uint64_t toggle_time = end_time - start_time;
+        printf("Toggle time taken - %llu\r\n", toggle_time);
+        coreSystemDelay(500);
     }
+
+    deinitBoard(board);
     // Should never get here
     return 0;
 }
