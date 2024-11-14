@@ -20,6 +20,13 @@
 
 // local includes
 
+
+typedef enum GPIOAction {
+    GPIO_READ,
+    GPIO_SET,
+    GPIO_CLEAR,
+    GPIO_TOGGLE,
+} GPIOAction;
 /**
  * @brief Control structure for GPIO pins. These are not only used as generic GPIO controllers,
  * but also inside other peripheral controllers to indicate what pins are being used for what. 

@@ -42,14 +42,14 @@ int main(void)
 
     BoardController *board = initBoard();
     createDigitalPin(board, BUILTIN_LD2_PORT, BUILTIN_LD2_PIN, RCC_GPIOA, false, GPIO_PUPD_NONE);
-
+    
     while (1)
     {
-        uint64_t start_time = coreGetTicks();
-        toggleDigitalOutputPin(board, BUILTIN_LD2_PORT, BUILTIN_LD2_PIN);
-        uint64_t end_time = coreGetTicks();
-        uint64_t toggle_time = end_time - start_time;
-        printf("Toggle time taken - %llu\r\n", toggle_time);
+        action_DigitalOutputPin(board, BUILTIN_LD2_PORT, BUILTIN_LD2_PIN, GPIO_SET);
+        printf("Set pin...\r\n");
+        coreSystemDelay(500);
+        action_DigitalOutputPin(board, BUILTIN_LD2_PORT, BUILTIN_LD2_PIN, GPIO_CLEAR);
+        printf("Cleared pin...\r\n");
         coreSystemDelay(500);
     }
 

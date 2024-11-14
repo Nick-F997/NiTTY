@@ -138,7 +138,15 @@ void createDigitalPin(BoardController *bc, uint32_t port, uint32_t pin,
     bc->peripherals[bc->peripherals_count - 1].enablePeripheral(&bc->peripherals[bc->peripherals_count - 1]);
 }
 
-void toggleDigitalOutputPin(BoardController *bc, uint32_t port, uint32_t pin)
+/**
+ * @brief Toggles a digital output pin
+ * 
+ * @param bc Main board structure
+ * @param port port to toggle
+ * @param pin pin to toggle
+ * @param action action to be carried out.
+ */
+void action_DigitalOutputPin(BoardController *bc, uint32_t port, uint32_t pin, GPIOAction action)
 {
     for (size_t periph = 0; periph < bc->peripherals_count; periph++)
     {
@@ -147,7 +155,33 @@ void toggleDigitalOutputPin(BoardController *bc, uint32_t port, uint32_t pin)
         {
             if (current_periph->peripheral.gpio.port == port && current_periph->peripheral.gpio.pin == pin)
             {
-                gpio_toggle(current_periph->peripheral.gpio.port, current_periph->peripheral.gpio.pin);
+                switch (action)
+                {
+                    case GPIO_READ:
+                    {
+                        return;
+                    }
+                    case GPIO_SET:
+                    {
+                        gpio_set(current_periph->peripheral.gpio.port, current_periph->peripheral.gpio.pin);
+                        break;
+                    }
+                    case GPIO_CLEAR:
+                    {
+                        gpio_clear(current_periph->peripheral.gpio.port, current_periph->peripheral.gpio.pin);
+                        break;
+                    }
+                    case GPIO_TOGGLE:
+                    {
+                        gpio_toggle(current_periph->peripheral.gpio.port, current_periph->peripheral.gpio.pin);
+                        break;
+                    }
+                    default:
+                    {
+                        return;
+                    }
+
+                }
             }
         }
     }

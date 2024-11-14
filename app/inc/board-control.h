@@ -43,7 +43,7 @@ BoardController* initBoard(void);
 void deinitBoard(BoardController *bc);
 void createDigitalPin(BoardController *bc, uint32_t port, uint32_t pin,
                 enum rcc_periph_clken clock, bool input_output, uint8_t pupd);
-void toggleDigitalOutputPin(BoardController *bc, uint32_t port, uint32_t pin);
+void action_DigitalOutputPin(BoardController *bc, uint32_t port, uint32_t pin, GPIOAction action);
 
 
 #endif
