@@ -2,5 +2,4 @@
 #define UART_CONTROL_H_
 
 
-
 #endif

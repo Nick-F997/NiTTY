@@ -23,6 +23,7 @@ static void enableStandardGPIO(PeripheralController *periph)
                          periph->peripheral.gpio.pupd_resistor, periph->peripheral.gpio.pin);
 }
 
+
 /**
  * @brief function to disable standard gpios. Doesn't actually do anything
  * 
@@ -43,11 +44,11 @@ static void disableStandardGPIO(PeripheralController *periph)
  * @param pupd pullup/pulldown resistor
  * @return PeripheralController 
  */
-PeripheralController createStandardGPIO(uint32_t port, uint32_t pin, enum rcc_periph_clken clock, bool input_output, uint8_t pupd)
+PeripheralController createStandardGPIO(uint32_t port, uint32_t pin, enum rcc_periph_clken clock, PeripheralType input_output, uint8_t pupd)
 {
-    uint8_t mode = input_output ? GPIO_MODE_INPUT : GPIO_MODE_OUTPUT;
+    uint8_t mode = input_output == TYPE_GPIO_INPUT ? GPIO_MODE_INPUT : GPIO_MODE_OUTPUT;
     PeripheralController pc;
-    pc.type = TYPE_GPIO;
+    pc.type = input_output;
     pc.peripheral.gpio = createGPIOPin(port, pin, clock, mode, 0, pupd);
     pc.enablePeripheral = enableStandardGPIO;
     pc.disablePeripheral = disableStandardGPIO;

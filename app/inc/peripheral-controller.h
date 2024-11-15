@@ -24,7 +24,8 @@
  * 
  */
 typedef enum PeripheralType {
-    TYPE_GPIO, // Gpio single pin
+    TYPE_GPIO_INPUT, // Gpio single pin
+    TYPE_GPIO_OUTPUT,
     TYPE_UART,
     TYPE_OTHER, // Placeholder
 } PeripheralType;
@@ -48,6 +49,6 @@ typedef struct PeripheralController {
 
 // function prototypes
 PeripheralController createStandardGPIO(uint32_t port, uint32_t pin, enum rcc_periph_clken clock, 
-                                bool input_output, uint8_t pupd);
+                                PeripheralType input_output, uint8_t pupd);
 
 #endif

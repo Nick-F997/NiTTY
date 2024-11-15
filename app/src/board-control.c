@@ -120,7 +120,7 @@ static bool clockExists(BoardController *bc, enum rcc_periph_clken clock)
  * @param pupd does it have a pullup/pulldown resistor
  */
 void createDigitalPin(BoardController *bc, uint32_t port, uint32_t pin,
-                enum rcc_periph_clken clock, bool input_output, uint8_t pupd)
+                enum rcc_periph_clken clock, PeripheralType input_output, uint8_t pupd)
 {
     // if clock is already made and enabled do nothing.
     bool clock_exists = clockExists(bc, clock);
@@ -139,50 +139,86 @@ void createDigitalPin(BoardController *bc, uint32_t port, uint32_t pin,
 }
 
 /**
- * @brief Toggles a digital output pin
+ * @brief Change the function of a digital pin
  * 
- * @param bc Main board structure
- * @param port port to toggle
- * @param pin pin to toggle
- * @param action action to be carried out.
+ * @param bc board control
+ * @param port port to change
+ * @param pin pin to change
+ * @param new_type new type of pin, either input or output
+ * @param new_pupd new pullup/pulldown resistor
  */
-void action_DigitalOutputPin(BoardController *bc, uint32_t port, uint32_t pin, GPIOAction action)
+void mutateDigitalPin(BoardController *bc, uint32_t port, uint32_t pin, PeripheralType new_type, uint8_t new_pupd)
 {
     for (size_t periph = 0; periph < bc->peripherals_count; periph++)
     {
         PeripheralController *current_periph = &bc->peripherals[periph];
-        if (current_periph->type == TYPE_GPIO)
+        if (current_periph->type == TYPE_GPIO_INPUT || current_periph->type == TYPE_GPIO_OUTPUT)
         {
             if (current_periph->peripheral.gpio.port == port && current_periph->peripheral.gpio.pin == pin)
             {
-                switch (action)
+                if (current_periph->type == new_type)
                 {
-                    case GPIO_READ:
-                    {
-                        return;
-                    }
-                    case GPIO_SET:
-                    {
-                        gpio_set(current_periph->peripheral.gpio.port, current_periph->peripheral.gpio.pin);
-                        break;
-                    }
-                    case GPIO_CLEAR:
-                    {
-                        gpio_clear(current_periph->peripheral.gpio.port, current_periph->peripheral.gpio.pin);
-                        break;
-                    }
-                    case GPIO_TOGGLE:
-                    {
-                        gpio_toggle(current_periph->peripheral.gpio.port, current_periph->peripheral.gpio.pin);
-                        break;
-                    }
-                    default:
-                    {
-                        return;
-                    }
-
+                    return;
                 }
+
+                current_periph->disablePeripheral(current_periph);
+                *current_periph = createStandardGPIO(port, pin, current_periph->peripheral.gpio.clock, new_type, new_pupd);
+                current_periph->enablePeripheral(current_periph);
+                return;
             }
         }
     }
 }
+
+/**
+ * @brief conducts an action on digital gpio pin
+ * 
+ * @param bc Main board structure
+ * @param port port to action
+ * @param pin pin to action
+ * @param action action to be carried out.
+ */
+void actionDigitalPin(BoardController *bc, uint32_t port, uint32_t pin, GPIOAction action)
+{
+    for (size_t periph = 0; periph < bc->peripherals_count; periph++)
+    {
+        PeripheralController *current_periph = &bc->peripherals[periph];
+        if (current_periph->peripheral.gpio.port == port && current_periph->peripheral.gpio.pin == pin)
+        {
+            switch (current_periph->type)
+            {
+                case TYPE_GPIO_INPUT:
+                {
+                    if (action == GPIO_READ)
+                    {
+                        gpio_get(port, pin);
+                    }
+                    return;            
+                }
+                case TYPE_GPIO_OUTPUT:
+                {
+                    switch (action)
+                    {
+                        case GPIO_SET:
+                        {
+                            gpio_set(port, pin);
+                            break;
+                        }
+                        case GPIO_CLEAR:
+                        {
+                            gpio_clear(port, pin);
+                            break;
+                        }
+                        case GPIO_TOGGLE:
+                        {
+                            gpio_toggle(port, pin);
+                            break;
+                        }
+                    }
+                    return;
+                }
+            }
+        }    
+    }
+}
+        

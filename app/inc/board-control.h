@@ -42,8 +42,8 @@ typedef struct BoardController {
 BoardController* initBoard(void);
 void deinitBoard(BoardController *bc);
 void createDigitalPin(BoardController *bc, uint32_t port, uint32_t pin,
-                enum rcc_periph_clken clock, bool input_output, uint8_t pupd);
-void action_DigitalOutputPin(BoardController *bc, uint32_t port, uint32_t pin, GPIOAction action);
-
+                enum rcc_periph_clken clock, PeripheralType input_output, uint8_t pupd);
+void actionDigitalPin(BoardController *bc, uint32_t port, uint32_t pin, GPIOAction action);
+void mutateDigitalPin(BoardController *bc, uint32_t port, uint32_t pin, PeripheralType new_type, uint8_t new_pupd);
 
 #endif
