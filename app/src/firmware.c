@@ -9,6 +9,7 @@
 #include <stdio.h>
 
 #include "board-control.h"
+#include "interpreter.h"
 
 #define BOOTLOADER_SIZE     (0x8000U)
 
@@ -25,7 +26,7 @@ static void clearLine(char *line, size_t len)
         line[i] = 0;
 }
 
-static void repl()
+static void repl(BoardController *bc)
 {
     static char line[32]; 
     static size_t count = 0;
@@ -37,6 +38,12 @@ static void repl()
         if (byte == '\r')
         {
             printf("\n> %s\n", line);
+            line[count > 0 ? count - 1 : 0] = '\0';
+            if (!interpret(bc, line, count))
+            {
+                printf("Could not interpret line: \"%s\".\r\n", line);
+                return;
+            }
             clearLine(line, count);
             count = 0;
         }
@@ -59,7 +66,7 @@ int main(void)
     
     while (1)
     {
-        repl();
+        repl(board);
     }
 
     deinitBoard(board);
