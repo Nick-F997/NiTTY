@@ -15,11 +15,32 @@
 #define BUILTIN_LD2_PORT    (GPIOA)
 #define BUILTIN_LD2_PIN     (GPIO5)
 
-
-
-
 static void loc_vector_setup(void) {
     SCB_VTOR = BOOTLOADER_SIZE; // Offset main Vector Table by size of bootloader so it knows where to look.
+}
+
+static void clearLine(char *line, size_t len)
+{
+    for (size_t i = 0; i < len; i++)
+        line[i] = 0;
+}
+
+static void repl()
+{
+    static char line[32]; 
+    static size_t count = 0;
+    while (coreUartDataAvailable())
+    {
+        char byte = (char)coreUartReadByte();
+        coreUartWriteByte(byte);
+        line[count++] = byte;
+        if (byte == '\r')
+        {
+            printf("\n> %s\n", line);
+            clearLine(line, count);
+            count = 0;
+        }
+    }
 }
 
 int main(void)
@@ -32,17 +53,13 @@ int main(void)
     // Setup reserved UART port 2.    
     coreUartSetup(115200);
 
+    printf("Fuck off cunt\r\n");
     BoardController *board = initBoard();
     createDigitalPin(board, BUILTIN_LD2_PORT, BUILTIN_LD2_PIN, RCC_GPIOA, TYPE_GPIO_OUTPUT, GPIO_PUPD_NONE);
     
     while (1)
     {
-        actionDigitalPin(board, BUILTIN_LD2_PORT, BUILTIN_LD2_PIN, GPIO_SET);
-        printf("Set pin...\r\n");
-        coreSystemDelay(500);
-        actionDigitalPin(board, BUILTIN_LD2_PORT, BUILTIN_LD2_PIN, GPIO_CLEAR);
-        printf("Cleared pin...\r\n");
-        coreSystemDelay(500);
+        repl();
     }
 
     deinitBoard(board);
