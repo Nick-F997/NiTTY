@@ -1,6 +1,7 @@
 #include "libopencm3/cm3/nvic.h"
 #include "libopencm3/stm32/rcc.h"
 #include "libopencm3/stm32/usart.h"
+#include "libopencm3/stm32/gpio.h"
 
 #include "core/uart.h"
 #include "core/ring-buffer.h"
@@ -52,7 +53,11 @@ int _write(int file, char *ptr, int len)
  */
 void coreUartSetup(uint32_t baudrate)
 {
-
+    rcc_periph_clock_enable(RCC_GPIOA);
+    // GPIO setup for uart. Clock for peripheral is set elsewhere
+    gpio_mode_setup(UART_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, UART_TX_PIN | UART_RX_PIN /* boolean or in order to set both pins*/);
+    gpio_set_af(UART_PORT, GPIO_AF7, UART_TX_PIN | UART_RX_PIN); // See datasheet for function.
+    gpio_port_config_lock(UART_PORT, UART_TX_PIN | UART_RX_PIN); // Lock pins so they're not usuable by anything else
     coreRingBufferSetup(&rb, data_buffer, RING_BUFFER_SIZE);
     rcc_periph_clock_enable(RCC_USART2);
     usart_set_mode(USART2, USART_MODE_TX_RX); // Make sure we're Rxing and Txing.

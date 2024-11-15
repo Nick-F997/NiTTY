@@ -7,6 +7,10 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#define UART_PORT           (GPIOA)
+#define UART_TX_PIN         (GPIO2)
+#define UART_RX_PIN         (GPIO3)
+
 int _write(int file, char *ptr, int len);
 
 void coreUartSetup(uint32_t baudrate);
