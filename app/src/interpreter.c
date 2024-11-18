@@ -138,6 +138,21 @@ static TokenType checkKeyword(Scanner *scanner, int start, int length, const cha
     return TOKEN_PORT_PIN;
 }
 
+static bool isValidPortPinStartingChar(char c)
+{
+    return (c >= 'a' && c <= 'g') ||
+         (c >= 'A' && c <= 'G') ||
+          c == '_';   
+}
+
+static TokenType isValidPortPin(Scanner *scanner)
+{
+    if (scanner->start[0])
+    {
+
+    }
+}
+
 /**
  * @brief Checks what the current string starts with and matches that to a token.
  * 
@@ -257,9 +272,9 @@ bool interpret(BoardController *bc, char *source, size_t length)
     // initialise scanner obj
     Scanner scanner;
     initScanner(&scanner, source);
-    // For debugging. Will replace with an actual vector at some point.
-    int count = 0; // size of tokvec
-    Token tokvec[20]; // Collection of tokens
+    
+    // Initialise token vector
+    TokenVector *tokvec = initTokenVector();
 
     while (true)
     {
@@ -268,22 +283,21 @@ bool interpret(BoardController *bc, char *source, size_t length)
         if (is_at_end(&scanner)) // When finished...
         {
             // Debugging stuff.
-            tokvec[count++] = makeToken(&scanner, TOKEN_EOL);
-            printf("Token count = %d\r\n", count);
-            for (int i = 0; i < count; i++)
+            appendTokenVector(tokvec, makeToken(&scanner, TOKEN_EOL)); 
+            printf("Token count = %d\r\n", sizeTokenVector(tokvec));
+            for (size_t i = 0; i < sizeTokenVector(tokvec); i++)
             {
-                print_token(tokvec[i]);
+                print_token(getTokenVector(tokvec, i));
             }
-            count = 0;
-
             // Successful interpretation.
+            deinitTokenVector(tokvec);
             return true;
         }
 
         // Move to the next character.
         char c = advance_scanner(&scanner);
-        if (isAlpha(c)) tokvec[count++] = identifier(&scanner); // If its a letter start checking
-        else tokvec[count++] = makeToken(&scanner, TOKEN_ERROR); // Otherwise stop
+        if (isAlpha(c)) appendTokenVector(tokvec, identifier(&scanner)); // If its a letter start checking
+        else appendTokenVector(tokvec, makeToken(&scanner, TOKEN_ERROR)); // Otherwise stop
     }
 }
 

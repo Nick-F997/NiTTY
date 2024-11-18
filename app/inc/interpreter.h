@@ -23,22 +23,8 @@
 
 // local includes
 #include "board-control.h"
+#include "token.h"
 
-// Enum defs
-/**
- * @brief Enum that dictates the tokens available to the user.
- * 
- */
-typedef enum TokenType {
-    TOKEN_GPIO_INPUT,
-    TOKEN_GPIO_OUTPUT,
-    TOKEN_PORT_PIN,
-    TOKEN_GPIO_SET,
-    TOKEN_GPIO_RESET,
-    TOKEN_GPIO_TOGGLE,
-    TOKEN_EOL,
-    TOKEN_ERROR,
-} TokenType;
 
 // Struct definitions
 /**
@@ -51,18 +37,6 @@ typedef struct Scanner {
     const char *start;
     const char *current;
 } Scanner;
-
-/**
- * @brief Token struct. Emitted by scanner after tokenisation.
- * @param type type of token
- * @param start start of the string for the token
- * @param length length of the string.
- */
-typedef struct Token {
-    TokenType type;
-    const char *start;
-    int length;
-} Token;
 
 
 // function prototypes

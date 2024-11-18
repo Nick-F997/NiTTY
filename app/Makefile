@@ -66,6 +66,7 @@ OBJS        += $(SRC_DIR)/local-memory.o
 OBJS        += $(SRC_DIR)/peripheral-controller.o
 OBJS        += $(SRC_DIR)/uart-control.o
 OBJS        += $(SRC_DIR)/interpreter.o
+OBJS		+= $(SRC_DIR)/token.o
 OBJS		+= $(SHARED_SRC_DIR)/core/system.o
 OBJS		+= $(SHARED_SRC_DIR)/core/uart.o
 OBJS		+= $(SHARED_SRC_DIR)/core/ring-buffer.o
