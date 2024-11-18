@@ -30,6 +30,7 @@ static void repl(BoardController *bc)
 {
     static char line[32]; 
     static size_t count = 0;
+
     while (coreUartDataAvailable())
     {
         char byte = (char)coreUartReadByte();
@@ -42,7 +43,6 @@ static void repl(BoardController *bc)
             if (!interpret(bc, line, count))
             {
                 printf("Could not interpret line: \"%s\".\r\n", line);
-                return;
             }
             clearLine(line, count);
             count = 0;

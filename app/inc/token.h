@@ -32,6 +32,8 @@ typedef enum TokenType {
     TOKEN_GPIO_SET,
     TOKEN_GPIO_RESET,
     TOKEN_GPIO_TOGGLE,
+    TOKEN_NUMBER,
+    TOKEN_STRING,
     TOKEN_EOL,
     TOKEN_ERROR,
 } TokenType;
@@ -61,6 +63,8 @@ typedef struct TokenVector {
     size_t capacity;
     Token *tokens;
 } TokenVector;
+
+// macro defines
 
 // Function prototypes
 TokenVector *initTokenVector(void);

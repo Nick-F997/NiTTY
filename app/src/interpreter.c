@@ -1,3 +1,13 @@
+/**
+ * @file interpreter.c
+ * @author Nicholas Fairburn (nicholas2.fairburn@live.uwe.ac.uk)
+ * @brief Logic for command line interpretation.
+ * @version 0.1
+ * @date 2024-11-18
+ * 
+ * @copyright Copyright (c) 2024
+ * 
+ */
 #include "interpreter.h"
 
 /**
@@ -115,6 +125,52 @@ static Token makeToken(Scanner *scanner, TokenType type)
 }
 
 /**
+ * @brief Similar to isAlpha(), but only between the first and last letter that indicates a port.
+ *        for example on the STM32F411RE the first port is A, the last port is C.
+ * 
+ * @param c character to check
+ * @return true character is valid port identifier
+ * @return false character is not valid port identifier
+ */
+static bool isValidPortPinStartingChar(char c)
+{
+    return (c >= PORTa_STM32F411RE && c <= PORTe_STM32F411RE) ||
+         (c >= PORTA_STM32F411RE && c <= PORTE_STM32F411RE);   
+}
+
+/**
+ * @brief Function to check whether an indeterminate string is a port-pin identifier (e.g., A10 or E09)
+ *       or garbage input.
+ * 
+ * @param scanner scanner to check
+ * @return TokenType valid or error token.
+ */
+static TokenType isValidPortPin(Scanner *scanner)
+{
+    if (isValidPortPinStartingChar(scanner->start[0]))
+    {
+        if (scanner->start[1] == PIN0)
+        {
+            
+            if (scanner->start[2] >= PIN0 && scanner->start[2] <= PIN9)
+            {
+                return TOKEN_PORT_PIN;
+            }
+            
+        }
+        else if (scanner->start[1] == PIN10)
+        {
+            if (scanner->start[2] >= PIN0 && scanner->start[2] <= PIN15)
+            {
+                return TOKEN_PORT_PIN;
+            }
+        }
+    }
+
+    return TOKEN_ERROR;
+}
+
+/**
  * @brief Checks whether the current token in scanner matches the provided "rest of string". For example, 
  * if Scanner's current string starts with "i", and rest is given as "nput", if the rest of Scanner's string 
  * is "input", this function returns the "input" token. If it does not match, it returns the "identifier" token. 
@@ -135,22 +191,7 @@ static TokenType checkKeyword(Scanner *scanner, int start, int length, const cha
         return type;
     }
 
-    return TOKEN_PORT_PIN;
-}
-
-static bool isValidPortPinStartingChar(char c)
-{
-    return (c >= 'a' && c <= 'g') ||
-         (c >= 'A' && c <= 'G') ||
-          c == '_';   
-}
-
-static TokenType isValidPortPin(Scanner *scanner)
-{
-    if (scanner->start[0])
-    {
-
-    }
+    return isValidPortPin(scanner);
 }
 
 /**
@@ -159,7 +200,7 @@ static TokenType isValidPortPin(Scanner *scanner)
  * @param scanner scanner to be checked
  * @return TokenType the matched token
  */
-static TokenType identiferType(Scanner *scanner)
+static TokenType identifierType(Scanner *scanner)
 {
     // Switch on first character in string.
     switch (scanner->start[0])
@@ -186,7 +227,7 @@ static TokenType identiferType(Scanner *scanner)
         }
     }
 
-    return TOKEN_PORT_PIN;
+    return isValidPortPin(scanner);
 }
 
 /**
@@ -199,7 +240,39 @@ static TokenType identiferType(Scanner *scanner)
 static Token identifier(Scanner *scanner)
 {
     while (isAlpha(peek(scanner)) || isDigit(peek(scanner))) advance_scanner(scanner);
-    return makeToken(scanner, identiferType(scanner));
+    return makeToken(scanner, identifierType(scanner));
+}
+
+/**
+ * @brief If it encounters a digit, the scanner attempts to parse it. Does not convert it from string.
+ * 
+ * @param scanner scanner to check
+ * @return Token number token.
+ */
+static Token number(Scanner *scanner)
+{
+    while (isDigit(peek(scanner))) advance_scanner(scanner);
+    return makeToken(scanner, TOKEN_NUMBER);
+}
+
+/**
+ * @brief Creates a string from a token.
+ * 
+ * @param scanner scanner to check
+ * @return Token either string token or error if string is unterminated.
+ */
+static Token string(Scanner *scanner)
+{
+    while (peek(scanner) != '"' && !is_at_end(scanner))
+    {
+        advance_scanner(scanner);  
+    } 
+    if (is_at_end(scanner))
+    {
+        return makeToken(scanner, TOKEN_ERROR);
+    }
+    advance_scanner(scanner); // Consume second " token
+    return makeToken(scanner, TOKEN_STRING);
 }
 
 /**
@@ -240,6 +313,14 @@ static char *get_token_type_name(TokenType token)
         {
             return "TOKEN_GPIO_TOGGLE";
         }
+        case TOKEN_NUMBER:
+        {
+            return "TOKEN_NUMBER";
+        }
+        case TOKEN_STRING:
+        {
+            return "TOKEN_STRING";
+        }
         case TOKEN_PORT_PIN:
         {
             return "TOKEN_PORT_PIN";
@@ -255,7 +336,14 @@ static char *get_token_type_name(TokenType token)
  */
 static void print_token(Token token)
 {
-    printf("Token type: %s\r\nToken: %.*s\r\n", get_token_type_name(token.type), token.length, token.start);
+    if (token.type == TOKEN_ERROR)
+    {
+        printf("Could not parse \"%.*s\". Unknown keyword or GPIO port-pin identifier.\r\n", token.length, token.start);
+    }
+    else 
+    {
+        printf("TOKEN TYPE: %s\r\nTOKEN: %.*s\r\n", get_token_type_name(token.type), token.length, token.start);
+    }
 }
 
 /**
@@ -265,7 +353,7 @@ static void print_token(Token token)
  * @param source the line to be interpetered.
  * @param length length of the line, unused.
  * @return true successful interpretation
- * @return false unsucessful interpretation.
+ * @return false unsuccessful interpretation.
  */
 bool interpret(BoardController *bc, char *source, size_t length)
 {
@@ -296,8 +384,33 @@ bool interpret(BoardController *bc, char *source, size_t length)
 
         // Move to the next character.
         char c = advance_scanner(&scanner);
-        if (isAlpha(c)) appendTokenVector(tokvec, identifier(&scanner)); // If its a letter start checking
-        else appendTokenVector(tokvec, makeToken(&scanner, TOKEN_ERROR)); // Otherwise stop
+        Token token;
+
+        if (isAlpha(c)) // If its a letter start checking
+        {
+            token = identifier(&scanner); 
+        }
+        else if (isDigit(c)) // If it's a number parse it as an int.
+        {
+            token = number(&scanner);
+        }
+        else if (c == '"') // If we encounter a string indicator create a string.
+        {
+            token = string(&scanner);
+        }
+        else
+        {
+            token = makeToken(&scanner, TOKEN_ERROR); // Otherwise stop
+        }
+        
+        appendTokenVector(tokvec, token);
+
+        if (token.type == TOKEN_ERROR)
+        {
+            print_token(token);
+            deinitTokenVector(tokvec);
+            return false;
+        }              
     }
 }
 
