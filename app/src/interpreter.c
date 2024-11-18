@@ -371,15 +371,8 @@ bool interpret(BoardController *bc, char *source, size_t length)
         if (is_at_end(&scanner)) // When finished...
         {
             // Debugging stuff.
-            appendTokenVector(tokvec, makeToken(&scanner, TOKEN_EOL)); 
-            printf("Token count = %d\r\n", sizeTokenVector(tokvec));
-            for (size_t i = 0; i < sizeTokenVector(tokvec); i++)
-            {
-                print_token(getTokenVector(tokvec, i));
-            }
-            // Successful interpretation.
-            deinitTokenVector(tokvec);
-            return true;
+            appendTokenVector(tokvec, makeToken(&scanner, TOKEN_EOL));
+            break; 
         }
 
         // Move to the next character.
@@ -412,5 +405,15 @@ bool interpret(BoardController *bc, char *source, size_t length)
             return false;
         }              
     }
+
+    // After tokenisation completed
+    printf("Token count = %d\r\n", sizeTokenVector(tokvec));
+    for (size_t i = 0; i < sizeTokenVector(tokvec); i++)
+    {
+        print_token(getTokenVector(tokvec, i));
+    }
+    // Successful interpretation.
+    deinitTokenVector(tokvec);
+    return true;
 }
 
