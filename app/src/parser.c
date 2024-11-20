@@ -1,4 +1,52 @@
+/**
+ * @file parser.c
+ * @author Nicholas Fairburn (nicholas2.fairburn@live.uwe.ac.uk)
+ * @brief Contains logic for parsing and executing token vectors.
+ * @version 0.1
+ * @date 2024-11-20
+ * 
+ * @copyright Copyright (c) 2024
+ * 
+ */
 #include "parser.h"
+
+/**
+ * @brief Get the Clock that matches the port provided.
+ *        This could be done with maths but honestly, this is far simpler.
+ * @param port port to get clock of
+ * @return enum rcc_periph_clken 
+ */
+static enum rcc_periph_clken getClockFromPort(uint32_t port)
+{
+    switch (port)
+    {
+        case GPIOA:
+        {
+            return RCC_GPIOA;
+        }
+        case GPIOB:
+        {
+            return RCC_GPIOB;
+        }
+        case GPIOC:
+        {
+            return RCC_GPIOC;
+        }
+        case GPIOD:
+        {
+            return RCC_GPIOD;
+        }
+        case GPIOE:
+        {
+            return RCC_GPIOE;
+        }
+        default:
+        {
+            // Bit of a crap way of doing this, but this clock is out of bounds.
+            return CLOCK_OUT_OF_BOUNDS;
+        }
+    }
+}
 
 /**
  * @brief Parses a GPIO pin from a given token. Some notes on execution (also covered in code below):
@@ -63,7 +111,15 @@ static bool parsePortPin(Token token, uint32_t *port, uint32_t *pin)
     return parsed_port && parsed_pin; // Return false if either parse failed.
 }
 
-
+/**
+ * @brief Creates an input or output object in board controller based on input.
+ * 
+ * @param bc board controller object to create input/output on.
+ * @param vec vector of tokens to parse
+ * @param input_output is it input or output.
+ * @return true parsed successfully.
+ * @return false parsed unsuccessfully.
+ */
 static bool inputOutput(BoardController *bc, TokenVector *vec, PeripheralType input_output)
 {   
     size_t vec_size = sizeTokenVector(vec);
@@ -81,6 +137,7 @@ static bool inputOutput(BoardController *bc, TokenVector *vec, PeripheralType in
     bool port_pin_set = false;
     bool pupd_set = false;
 
+    // Ignore the initial token - we've already parsed this.
     for (size_t i = 1; i < vec_size; i++)
     {
         Token current_token = getTokenVector(vec, i);
@@ -88,10 +145,12 @@ static bool inputOutput(BoardController *bc, TokenVector *vec, PeripheralType in
         {
             case TOKEN_EOL:
             {
+                // Just ignore.
                 break;
             }
             case TOKEN_PORT_PIN:
             {
+                // If we haven't already assigned the port and pin
                 if (!port_pin_set)
                 {
                     if (!parsePortPin(current_token, &port, &pin))
@@ -109,10 +168,12 @@ static bool inputOutput(BoardController *bc, TokenVector *vec, PeripheralType in
 
                 break;
             }
+            // These all do the same thing
             case TOKEN_GPIO_NORESISTOR:
             case TOKEN_GPIO_PULLUP:
             case TOKEN_GPIO_PULLDOWN:
             {
+                // if we haven't already set pupd
                 if (!pupd_set)
                 {
                     pupd = (current_token.type == TOKEN_GPIO_NORESISTOR) ? GPIO_PUPD_NONE :
@@ -133,27 +194,53 @@ static bool inputOutput(BoardController *bc, TokenVector *vec, PeripheralType in
             }
         }
     }
+
+    // If we've gotten this far we know we've succeeded. 
+    if (port_pin_set && pupd_set)
+    {
+        // If the pin doesn't exist make a new one, else just change the current one.
+        if (!digitalPinExists(bc, port, pin))
+        {
+            // Get correct clock
+            enum rcc_periph_clken clock = getClockFromPort(port);
+            if (clock == CLOCK_OUT_OF_BOUNDS)
+            {
+                // This really shouldn't happen.
+                printf("Incorrect port clock identified.\r\n");
+                return false;
+            }
+            createDigitalPin(bc, port, pin, clock, input_output, pupd);
+        }
+        else 
+        {
+            mutateDigitalPin(bc, port, pin, input_output, pupd);
+        }
+        return true;
+    }
+    else
+    {
+        printf("Parse Error: Unable to parse identifiers.\r\n");
+        return false;
+    }
 }
 
-
-
-    
-
-
-bool parseTokens(BoardController *bc, TokenVector *vec)
+/**
+ * @brief Parses the token vector returned by interpret(). Executes any commands interpreted.
+ * 
+ * @param bc board controller object to execute commands on.
+ * @param vec vector of tokens to parse
+ * @return true parsing successful
+ * @return false parsing unsuccessful
+ */
+bool parseTokensAndExecute(BoardController *bc, TokenVector *vec)
 {
     // First token is always the function type identifier
     Token first_token = getTokenVector(vec, 0);
     switch (first_token.type)
     {
-        case TOKEN_GPIO_INPUT:
-        {
-
-        }
-        case TOKEN_GPIO_OUTPUT:
-        {
-
-        }
+        case TOKEN_GPIO_INPUT: return inputOutput(bc, vec, TYPE_GPIO_INPUT);
+        case TOKEN_GPIO_OUTPUT: return inputOutput(bc, vec, TYPE_GPIO_OUTPUT);
+    
         case TOKEN_GPIO_SET:
         {
 

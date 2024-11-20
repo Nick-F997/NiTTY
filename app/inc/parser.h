@@ -24,16 +24,6 @@
 #include "board-control.h"
 
 // enum definitions
-typedef enum OpCodes {
-    OP_RETURN,
-    OP_ERROR,
-    OP_SETUP_GPIO_INPUT,
-    OP_SETUP_GPIO_OUTPUT,
-    OP_GPIO_SET,
-    OP_GPIO_RESET,
-    OP_GPIO_TOGGLE,
-    // Add more as we expand functionality
-} OpCodes;
 
 // Struct definitions
 
@@ -41,8 +31,9 @@ typedef enum OpCodes {
 #define INPUT_OUTPUT_MAX_ARGS (3)
 #define PORT_SIZE (0x400)
 #define JUMP_TO_LOWERCASE (0x1B)
+#define CLOCK_OUT_OF_BOUNDS (RCC_GPIOK)
 
 // Function prototypes
-
+bool parseTokensAndExecute(BoardController *bc, TokenVector *vec);
 
 #endif

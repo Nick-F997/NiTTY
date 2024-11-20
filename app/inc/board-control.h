@@ -44,6 +44,7 @@ void deinitBoard(BoardController *bc);
 void createDigitalPin(BoardController *bc, uint32_t port, uint32_t pin,
                 enum rcc_periph_clken clock, PeripheralType input_output, uint8_t pupd);
 void actionDigitalPin(BoardController *bc, uint32_t port, uint32_t pin, GPIOAction action);
+bool digitalPinExists(BoardController *bc, uint32_t port, uint32_t pin);
 void mutateDigitalPin(BoardController *bc, uint32_t port, uint32_t pin, PeripheralType new_type, uint8_t new_pupd);
 
 #endif

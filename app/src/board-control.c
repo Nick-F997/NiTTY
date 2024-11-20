@@ -139,6 +139,32 @@ void createDigitalPin(BoardController *bc, uint32_t port, uint32_t pin,
 }
 
 /**
+ * @brief Returns where a pin is already initialised or not.
+ * 
+ * @param bc board controller to check
+ * @param port port to check
+ * @param pin pin to check
+ * @return true pin exists
+ * @return false pin does not exist
+ */
+bool digitalPinExists(BoardController *bc, uint32_t port, uint32_t pin)
+{
+    for (size_t periph = 0; periph < bc->peripherals_count; periph++)
+    {
+        PeripheralController *current_periph = &bc->peripherals[periph];
+        if (current_periph->type == TYPE_GPIO_INPUT || current_periph->type == TYPE_GPIO_OUTPUT)
+        {
+            if (current_periph->peripheral.gpio.port == port && current_periph->peripheral.gpio.pin == pin)
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+/**
  * @brief Change the function of a digital pin
  * 
  * @param bc board control
