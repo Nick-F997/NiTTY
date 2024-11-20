@@ -30,8 +30,12 @@ typedef enum TokenType {
     TOKEN_GPIO_OUTPUT,
     TOKEN_PORT_PIN,
     TOKEN_GPIO_SET,
+    TOKEN_GPIO_READ,
     TOKEN_GPIO_RESET,
     TOKEN_GPIO_TOGGLE,
+    TOKEN_GPIO_PULLUP,
+    TOKEN_GPIO_PULLDOWN,
+    TOKEN_GPIO_NORESISTOR,
     TOKEN_NUMBER,
     TOKEN_STRING,
     TOKEN_EOL,
@@ -65,6 +69,15 @@ typedef struct TokenVector {
 } TokenVector;
 
 // macro defines
+#define PORTA_STM32F411RE ('A')
+#define PORTa_STM32F411RE ('a')
+#define PORTE_STM32F411RE ('E')
+#define PORTe_STM32F411RE ('e')
+
+#define PIN0 ('0')
+#define PIN9 ('9')
+#define PIN15 ('5')
+#define PIN10 ('1')
 
 // Function prototypes
 TokenVector *initTokenVector(void);

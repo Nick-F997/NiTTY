@@ -39,15 +39,7 @@ typedef struct Scanner {
 } Scanner;
 
 // Macro definitions
-#define PORTA_STM32F411RE ('A')
-#define PORTa_STM32F411RE ('a')
-#define PORTE_STM32F411RE ('E')
-#define PORTe_STM32F411RE ('e')
 
-#define PIN0 ('0')
-#define PIN9 ('9')
-#define PIN15 ('5')
-#define PIN10 ('1')
 
 // function prototypes
 bool interpret(BoardController *bc, char *source, size_t length);

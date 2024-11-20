@@ -205,26 +205,44 @@ static TokenType identifierType(Scanner *scanner)
     // Switch on first character in string.
     switch (scanner->start[0])
     {
-        case 'i':
-        {
-            return checkKeyword(scanner, 1, 4, "nput", TOKEN_GPIO_INPUT);
+        case 'i': return checkKeyword(scanner, 1, 4, "nput", TOKEN_GPIO_INPUT);
+        case 'n': return checkKeyword(scanner, 1, 3, "one", TOKEN_GPIO_NORESISTOR);
+        case 'o': return checkKeyword(scanner, 1, 5, "utput", TOKEN_GPIO_OUTPUT);
+        case 's': return checkKeyword(scanner, 1, 2, "et", TOKEN_GPIO_SET);
+        case 'r': 
+        { // This is all a bit silly but it keeps in theme with the rest of the code.
+            if (scanner->current - scanner->start > 1)
+            {
+                switch(scanner->start[1])
+                {
+                    case 'e': 
+                    {
+                        if (scanner->current - scanner->start > 2)
+                        {
+                            switch (scanner->start[2])
+                            {
+                                case 'a': return checkKeyword(scanner, 3, 1, "d", TOKEN_GPIO_READ);
+                                case 's': return checkKeyword(scanner, 3, 2, "et", TOKEN_GPIO_RESET);
+                            }
+                        }
+                    }
+                }
+            }
+            break;
         }
-        case 'o':
+        case 'p':
         {
-            return checkKeyword(scanner, 1, 5, "utput", TOKEN_GPIO_OUTPUT);
+            if (scanner->current - scanner->start > 1)
+            {
+                switch (scanner->start[1])
+                {
+                    case 'u': return checkKeyword(scanner, 2, 1, "p", TOKEN_GPIO_PULLUP);
+                    case 'd': return checkKeyword(scanner, 2, 3, "own", TOKEN_GPIO_PULLDOWN);                   
+                }
+            }
+            break;
         }
-        case 's':
-        {
-            return checkKeyword(scanner, 1, 2, "et", TOKEN_GPIO_SET);
-        }
-        case 'r':
-        {
-            return checkKeyword(scanner, 1, 4, "eset", TOKEN_GPIO_RESET);
-        }
-        case 't':
-        {
-            return checkKeyword(scanner, 1, 5, "oggle", TOKEN_GPIO_TOGGLE);
-        }
+        case 't': return checkKeyword(scanner, 1, 5, "oggle", TOKEN_GPIO_TOGGLE);
     }
 
     return isValidPortPin(scanner);
@@ -301,6 +319,10 @@ static char *get_token_type_name(TokenType token)
         {
             return "TOKEN_GPIO_OUTPUT";
         }
+        case TOKEN_GPIO_READ:
+        {
+            return "TOKEN_GPIO_READ";
+        }
         case TOKEN_GPIO_RESET:
         {
             return "TOKEN_GPIO_RESET";
@@ -324,6 +346,18 @@ static char *get_token_type_name(TokenType token)
         case TOKEN_PORT_PIN:
         {
             return "TOKEN_PORT_PIN";
+        }
+        case TOKEN_GPIO_NORESISTOR:
+        {
+            return "TOKEN_GPIO_NORESISTOR";
+        }
+        case TOKEN_GPIO_PULLUP:
+        {
+            return "TOKEN_GPIO_PULLUP";
+        }
+        case TOKEN_GPIO_PULLDOWN:
+        {
+            return "TOKEN_GPIO_PULLDOWN";
         }
     }
     return "UNKNOWN_TOKEN";
