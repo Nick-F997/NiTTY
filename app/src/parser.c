@@ -126,7 +126,7 @@ static bool inputOutput(BoardController *bc, TokenVector *vec, OpCode input_outp
     // Ignore end of line token.
     if (vec_size - 1 != INPUT_OUTPUT_MAX_ARGS)
     {
-        printf("Invalid input format, use \"input <port pin> <pup/pdown/none>\". See documentation for more information.\r\n");
+        printf("> Parse Error: Invalid input format, use \"input <port pin> <pup/pdown/none>\". See documentation for more information.\r\n");
         return false;
     }
 
@@ -155,14 +155,14 @@ static bool inputOutput(BoardController *bc, TokenVector *vec, OpCode input_outp
                 {
                     if (!parsePortPin(current_token, &port, &pin))
                     {
-                        printf("Parse Error: Unable to parse GPIO identifer \"%.*s\".", current_token.length, current_token.start);
+                        printf("> Parse Error: Unable to parse GPIO identifer \"%.*s\".", current_token.length, current_token.start);
                         return false;
                     }
                     port_pin_set = true;
                 }
                 else
                 {
-                    printf("Parse Error: Multiple GPIO pins provided.\r\n");
+                    printf("> Parse Error: Multiple GPIO pins provided.\r\n");
                     return false;
                 }
 
@@ -182,14 +182,14 @@ static bool inputOutput(BoardController *bc, TokenVector *vec, OpCode input_outp
                 }
                 else 
                 {
-                    printf("Parse Error: Multiple pullup/pulldown resistor configurations provided.\r\n");
+                    printf("> Parse Error: Multiple pullup/pulldown resistor configurations provided.\r\n");
                     return false;
                 }
                 break;
             }
             default:
             {
-                printf("Parse Error: Unrecognised token while parsing: \"%.*s\".\r\n", current_token.length, current_token.start);
+                printf("> Parse Error: Unrecognised token while parsing: \"%.*s\".\r\n", current_token.length, current_token.start);
                 return false;
             }
         }
@@ -208,27 +208,29 @@ static bool inputOutput(BoardController *bc, TokenVector *vec, OpCode input_outp
             if (clock == CLOCK_OUT_OF_BOUNDS)
             {
                 // This really shouldn't happen.
-                printf("Incorrect port clock identified.\r\n");
+                printf("> Parse Error: Incorrect port clock identified.\r\n");
                 return false;
             }
             createDigitalPin(bc, port, pin, clock, type_input_output, pupd);
+            printf("> created new pin.\r\n");
         }
         else 
         {
             // This pin exists so just update it.
             mutateDigitalPin(bc, port, pin, type_input_output, pupd);
+            printf("> modified existing pin.\r\n");
         }
         return true;
     }
     else
     {
-        printf("Parse Error: Unable to parse identifiers.\r\n");
+        printf("> Parse Error: Unable to parse identifiers.\r\n");
         return false;
     }
 }
 
 /**
- * @brief Set, reset, or toggle the selected pin(s).
+ * @brief Set, reset, read, or toggle the selected pin(s).
  * 
  * @param bc board control object
  * @param vec vector of tokens
@@ -236,7 +238,7 @@ static bool inputOutput(BoardController *bc, TokenVector *vec, OpCode input_outp
  * @return true executed correctly
  * @return false executed incorrectly.
  */
-static bool setResetToggle(BoardController *bc, TokenVector *vec, OpCode operation)
+static bool setResetToggleRead(BoardController *bc, TokenVector *vec, OpCode operation)
 {
     // We don't need to do a check on this as we allow users to input as many pins as they want.
     size_t vec_size = sizeTokenVector(vec);
@@ -249,6 +251,7 @@ static bool setResetToggle(BoardController *bc, TokenVector *vec, OpCode operati
     for (size_t i = 1; i < vec_size; i++)
     {
         Token current_token = getTokenVector(vec, i);
+        uint16_t read_response = 0; // response if the user wants to read the pin. Will be zero if the pin is output.
         if (current_token.type == TOKEN_EOL) // Ignore EOL token.
         {
             continue;
@@ -258,7 +261,7 @@ static bool setResetToggle(BoardController *bc, TokenVector *vec, OpCode operati
             // If we can't parse the object return
             if (!parsePortPin(current_token, &port, &pin))
             {
-                printf("Parse Error: Unrecognised port pin: \"%.*s\".\r\n", current_token.length, current_token.start);
+                printf("> Parse Error: Unrecognised port pin: \"%.*s\".\r\n", current_token.length, current_token.start);
                 return false;    
             }
 
@@ -269,23 +272,32 @@ static bool setResetToggle(BoardController *bc, TokenVector *vec, OpCode operati
                 {
                     case OP_SET:
                     {
-                        actionDigitalPin(bc, port, pin, GPIO_SET);
+                        read_response = actionDigitalPin(bc, port, pin, GPIO_SET);
+                        printf("> SET %.*s\r\n", current_token.length, current_token.start);
                         break;
                     }
                     case OP_RESET:
                     {
-                        actionDigitalPin(bc, port, pin, GPIO_CLEAR);
+                        read_response = actionDigitalPin(bc, port, pin, GPIO_CLEAR);
+                        printf("> RESET %.*s\r\n", current_token.length, current_token.start);
                         break;
                     }
                     case OP_TOGGLE:
                     {
-                        actionDigitalPin(bc, port, pin, GPIO_TOGGLE);
+                        read_response = actionDigitalPin(bc, port, pin, GPIO_TOGGLE);
+                        printf("> TOGGLE %.*s\r\n", current_token.length, current_token.start);
+                        break;
+                    }
+                    case OP_READ:
+                    {
+                        read_response = actionDigitalPin(bc, port, pin, GPIO_READ);
+                        printf("> READ %.*s = %u\r\n", current_token.length, current_token.start, read_response);
                         break;
                     }
                     default:
                     {
                         // Should never get here.
-                        printf("Parse Error: Incorrect op code provided.\r\n");
+                        printf("> Parse Error: Incorrect op code provided.\r\n");
                         return false;
                     }
                 } 
@@ -293,7 +305,7 @@ static bool setResetToggle(BoardController *bc, TokenVector *vec, OpCode operati
             else 
             {
                 // This pin does not exist, stop execution.
-                printf("Parse Error: Port Pin identifer \"%.*s\" is not initialised and cannot be operated on.\r\n", current_token.length, current_token.start);
+                printf("> Parse Error: Port Pin identifer \"%.*s\" is not initialised and cannot be operated on.\r\n", current_token.length, current_token.start);
                 return false;
             }
             // Reset port and pin for safety.
@@ -301,7 +313,7 @@ static bool setResetToggle(BoardController *bc, TokenVector *vec, OpCode operati
         }
         else
         {
-            printf("Parse Error: Unrecognised token while parsing: \"%.*s\".\r\n", current_token.length, current_token.start);
+            printf("> Parse Error: Unrecognised token while parsing: \"%.*s\".\r\n", current_token.length, current_token.start);
             return false;
         }
     }
@@ -326,12 +338,13 @@ bool parseTokensAndExecute(BoardController *bc, TokenVector *vec)
     {
         case TOKEN_GPIO_INPUT: return inputOutput(bc, vec, OP_MAKE_INPUT);
         case TOKEN_GPIO_OUTPUT: return inputOutput(bc, vec, OP_MAKE_OUTPUT);
-        case TOKEN_GPIO_SET: return setResetToggle(bc, vec, OP_SET);
-        case TOKEN_GPIO_RESET: return setResetToggle(bc, vec, OP_RESET);
-        case TOKEN_GPIO_TOGGLE: return setResetToggle(bc, vec, OP_TOGGLE);
+        case TOKEN_GPIO_SET: return setResetToggleRead(bc, vec, OP_SET);
+        case TOKEN_GPIO_RESET: return setResetToggleRead(bc, vec, OP_RESET);
+        case TOKEN_GPIO_TOGGLE: return setResetToggleRead(bc, vec, OP_TOGGLE);
+        case TOKEN_GPIO_READ: return setResetToggleRead(bc, vec, OP_READ);
         default:
         {
-            printf("Invalid line logic. Token \"%.*s\" is not a valid line start.\r\n", vec->tokens[0].length, vec->tokens[0].start);
+            printf("> Parse Error: Invalid line logic. Token \"%.*s\" is not a valid line start.\r\n", vec->tokens[0].length, vec->tokens[0].start);
             return false;
         }
     }

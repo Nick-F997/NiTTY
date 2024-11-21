@@ -68,7 +68,7 @@ static void repl(BoardController *bc)
         line[count++] = byte;
         if (byte == '\r')
         {
-            printf("\n> %s\n", line);
+            //printf("\n> ");
             line[count > 0 ? count - 1 : 0] = '\0';
             if (!interpret(bc, line, count))
             {

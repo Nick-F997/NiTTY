@@ -203,8 +203,9 @@ void mutateDigitalPin(BoardController *bc, uint32_t port, uint32_t pin, Peripher
  * @param port port to action
  * @param pin pin to action
  * @param action action to be carried out.
+ * @returns uint16_t value read from pin if reading. If not reading, always 0.
  */
-void actionDigitalPin(BoardController *bc, uint32_t port, uint32_t pin, GPIOAction action)
+uint16_t actionDigitalPin(BoardController *bc, uint32_t port, uint32_t pin, GPIOAction action)
 {
     for (size_t periph = 0; periph < bc->peripherals_count; periph++)
     {
@@ -217,9 +218,10 @@ void actionDigitalPin(BoardController *bc, uint32_t port, uint32_t pin, GPIOActi
                 {
                     if (action == GPIO_READ)
                     {
-                        gpio_get(port, pin);
+                        uint16_t pin_result = gpio_get(port, pin);
+                        return pin_result;            
                     }
-                    return;            
+                    return 0;
                 }
                 case TYPE_GPIO_OUTPUT:
                 {
@@ -241,10 +243,11 @@ void actionDigitalPin(BoardController *bc, uint32_t port, uint32_t pin, GPIOActi
                             break;
                         }
                     }
-                    return;
+                    return 0;
                 }
             }
         }    
     }
+    return 0;
 }
         

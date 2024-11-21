@@ -372,7 +372,7 @@ static void print_token(Token token)
 {
     if (token.type == TOKEN_ERROR)
     {
-        printf("Could not parse \"%.*s\". Unknown keyword or GPIO port-pin identifier.\r\n", token.length, token.start);
+        printf("> Scanner Error: Could not parse \"%.*s\". Unknown keyword or GPIO port-pin identifier.\r\n", token.length, token.start);
     }
     else 
     {
@@ -441,11 +441,11 @@ bool interpret(BoardController *bc, char *source, size_t length)
     }
 
     // After tokenisation completed
-    printf("Token count = %d\r\n", sizeTokenVector(tokvec));
-    for (size_t i = 0; i < sizeTokenVector(tokvec); i++)
-    {
-        print_token(getTokenVector(tokvec, i));
-    }
+    // printf("Token count = %d\r\n", sizeTokenVector(tokvec));
+    // for (size_t i = 0; i < sizeTokenVector(tokvec); i++)
+    // {
+    //     print_token(getTokenVector(tokvec, i));
+    // }
 
     // Check interpretation and parsing.
     bool return_value = parseTokensAndExecute(bc, tokvec);
