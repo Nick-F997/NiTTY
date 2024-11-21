@@ -288,8 +288,7 @@ static bool setResetToggle(BoardController *bc, TokenVector *vec, OpCode operati
                         printf("Parse Error: Incorrect op code provided.\r\n");
                         return false;
                     }
-                }
-                
+                } 
             }
             else 
             {
