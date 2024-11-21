@@ -95,6 +95,7 @@ int main(void)
     // Setup reserved UART port 2.    
     coreUartSetup(115200);
     
+    printf("-- Welcome to NiTTY --\r\n");
     BoardController *board = initBoard();
     //createDigitalPin(board, BUILTIN_LD2_PORT, BUILTIN_LD2_PIN, RCC_GPIOA, TYPE_GPIO_OUTPUT, GPIO_PUPD_NONE);
     
