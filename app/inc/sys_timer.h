@@ -1,3 +1,13 @@
+/**
+ * @file sys_timer.h
+ * @author Nicholas Fairburn (nicholas2.fairburn@live.uwe.ac.uk)
+ * @brief Definitions for timer logic. Mostly unused.
+ * @version 0.1
+ * @date 2024-11-21
+ * 
+ * @copyright Copyright (c) 2024
+ * 
+ */
 #ifndef TIMER_H_
 #define TIMER_H_
 

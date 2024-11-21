@@ -24,13 +24,32 @@
 #include "board-control.h"
 
 // enum definitions
-
+/**
+ * @brief Enum that defines different operations that can be carried out on pins & peripherals. 
+ * 
+ */
+typedef enum OpCode 
+{
+    OP_SET,
+    OP_RESET,
+    OP_TOGGLE,
+    OP_READ,
+    OP_MAKE_INPUT,
+    OP_MAKE_OUTPUT,
+} OpCode;
 // Struct definitions
 
 // Macro definitions
+// Max args for inputOutput function
 #define INPUT_OUTPUT_MAX_ARGS (3)
+
+// Size between ports
 #define PORT_SIZE (0x400)
+
+// Size to jump between 
 #define JUMP_TO_LOWERCASE (0x1B)
+
+// Shit way to make sure a clock is in bounds. 
 #define CLOCK_OUT_OF_BOUNDS (RCC_GPIOK)
 
 // Function prototypes

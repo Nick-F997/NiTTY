@@ -1,3 +1,13 @@
+/**
+ * @file timer.c
+ * @author Nicholas Fairburn (nicholas2.fairburn@live.uwe.ac.uk)
+ * @brief Functions to set up timers.
+ * @version 0.1
+ * @date 2024-11-21
+ * 
+ * @copyright Copyright (c) 2024
+ * 
+ */
 #include "sys_timer.h"
 
 #include "libopencm3/stm32/rcc.h"

@@ -24,7 +24,7 @@
 // local includes
 #include "board-control.h"
 #include "token.h"
-
+#include "parser.h"
 
 // Struct definitions
 /**

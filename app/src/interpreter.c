@@ -446,8 +446,10 @@ bool interpret(BoardController *bc, char *source, size_t length)
     {
         print_token(getTokenVector(tokvec, i));
     }
-    // Successful interpretation.
+
+    // Check interpretation and parsing.
+    bool return_value = parseTokensAndExecute(bc, tokvec);
     deinitTokenVector(tokvec);
-    return true;
+    return return_value;
 }
 

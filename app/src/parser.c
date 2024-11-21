@@ -101,7 +101,7 @@ static bool parsePortPin(Token token, uint32_t *port, uint32_t *pin)
     uint32_t pin_val = strtoul(token.start, NULL, 10);
 
     // This should never be outside of this range as it's checked in the scanner but better safe than sorry.
-    if (pin_val >= 0 && pin_val <= 15)
+    if (pin_val <= 15)
     {
         // Calculate pin value mathematically
         // Each pin is indexed in a port by a bit shift along. E.g. GPIO0 = (1 << 0), GPIO1 = (1 << 1), GPIO2 = (1 << 2), etc.
@@ -120,7 +120,7 @@ static bool parsePortPin(Token token, uint32_t *port, uint32_t *pin)
  * @return true parsed successfully.
  * @return false parsed unsuccessfully.
  */
-static bool inputOutput(BoardController *bc, TokenVector *vec, PeripheralType input_output)
+static bool inputOutput(BoardController *bc, TokenVector *vec, OpCode input_output)
 {   
     size_t vec_size = sizeTokenVector(vec);
     // Ignore end of line token.
@@ -198,6 +198,8 @@ static bool inputOutput(BoardController *bc, TokenVector *vec, PeripheralType in
     // If we've gotten this far we know we've succeeded. 
     if (port_pin_set && pupd_set)
     {
+        // Translate opcode into peripheral type.
+        PeripheralType type_input_output = input_output == OP_MAKE_INPUT ? TYPE_GPIO_INPUT : TYPE_GPIO_OUTPUT;
         // If the pin doesn't exist make a new one, else just change the current one.
         if (!digitalPinExists(bc, port, pin))
         {
@@ -209,11 +211,12 @@ static bool inputOutput(BoardController *bc, TokenVector *vec, PeripheralType in
                 printf("Incorrect port clock identified.\r\n");
                 return false;
             }
-            createDigitalPin(bc, port, pin, clock, input_output, pupd);
+            createDigitalPin(bc, port, pin, clock, type_input_output, pupd);
         }
         else 
         {
-            mutateDigitalPin(bc, port, pin, input_output, pupd);
+            // This pin exists so just update it.
+            mutateDigitalPin(bc, port, pin, type_input_output, pupd);
         }
         return true;
     }
@@ -222,6 +225,90 @@ static bool inputOutput(BoardController *bc, TokenVector *vec, PeripheralType in
         printf("Parse Error: Unable to parse identifiers.\r\n");
         return false;
     }
+}
+
+/**
+ * @brief Set, reset, or toggle the selected pin(s).
+ * 
+ * @param bc board control object
+ * @param vec vector of tokens
+ * @param operation What operation the user has selected
+ * @return true executed correctly
+ * @return false executed incorrectly.
+ */
+static bool setResetToggle(BoardController *bc, TokenVector *vec, OpCode operation)
+{
+    // We don't need to do a check on this as we allow users to input as many pins as they want.
+    size_t vec_size = sizeTokenVector(vec);
+
+    // initialise to 0
+    uint32_t port = 0;
+    uint32_t pin = 0;
+
+    // Loop through vector, ignoring first token.
+    for (size_t i = 1; i < vec_size; i++)
+    {
+        Token current_token = getTokenVector(vec, i);
+        if (current_token.type == TOKEN_EOL) // Ignore EOL token.
+        {
+            continue;
+        }
+        else if (current_token.type == TOKEN_PORT_PIN)
+        {
+            // If we can't parse the object return
+            if (!parsePortPin(current_token, &port, &pin))
+            {
+                printf("Parse Error: Unrecognised port pin: \"%.*s\".\r\n", current_token.length, current_token.start);
+                return false;    
+            }
+
+            // If the pin already exists execute command.
+            if (digitalPinExists(bc, port, pin))
+            {
+                switch (operation)
+                {
+                    case OP_SET:
+                    {
+                        actionDigitalPin(bc, port, pin, GPIO_SET);
+                        break;
+                    }
+                    case OP_RESET:
+                    {
+                        actionDigitalPin(bc, port, pin, GPIO_CLEAR);
+                        break;
+                    }
+                    case OP_TOGGLE:
+                    {
+                        actionDigitalPin(bc, port, pin, GPIO_TOGGLE);
+                        break;
+                    }
+                    default:
+                    {
+                        // Should never get here.
+                        printf("Parse Error: Incorrect op code provided.\r\n");
+                        return false;
+                    }
+                }
+                
+            }
+            else 
+            {
+                // This pin does not exist, stop execution.
+                printf("Parse Error: Port Pin identifer \"%.*s\" is not initialised and cannot be operated on.\r\n", current_token.length, current_token.start);
+                return false;
+            }
+            // Reset port and pin for safety.
+            port = pin = 0;
+        }
+        else
+        {
+            printf("Parse Error: Unrecognised token while parsing: \"%.*s\".\r\n", current_token.length, current_token.start);
+            return false;
+        }
+    }
+    
+    // Execution was succesful.
+    return true;
 }
 
 /**
@@ -238,21 +325,11 @@ bool parseTokensAndExecute(BoardController *bc, TokenVector *vec)
     Token first_token = getTokenVector(vec, 0);
     switch (first_token.type)
     {
-        case TOKEN_GPIO_INPUT: return inputOutput(bc, vec, TYPE_GPIO_INPUT);
-        case TOKEN_GPIO_OUTPUT: return inputOutput(bc, vec, TYPE_GPIO_OUTPUT);
-    
-        case TOKEN_GPIO_SET:
-        {
-
-        }
-        case TOKEN_GPIO_RESET:
-        {
-
-        }
-        case TOKEN_GPIO_TOGGLE:
-        {
-
-        }
+        case TOKEN_GPIO_INPUT: return inputOutput(bc, vec, OP_MAKE_INPUT);
+        case TOKEN_GPIO_OUTPUT: return inputOutput(bc, vec, OP_MAKE_OUTPUT);
+        case TOKEN_GPIO_SET: return setResetToggle(bc, vec, OP_SET);
+        case TOKEN_GPIO_RESET: return setResetToggle(bc, vec, OP_RESET);
+        case TOKEN_GPIO_TOGGLE: return setResetToggle(bc, vec, OP_TOGGLE);
         default:
         {
             printf("Invalid line logic. Token \"%.*s\" is not a valid line start.\r\n", vec->tokens[0].length, vec->tokens[0].start);
