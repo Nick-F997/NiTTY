@@ -4,3 +4,6 @@
 *.d
 *.o
 .vscode/
+.cache/
+compile_commands.json
+.clangd
