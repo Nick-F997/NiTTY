@@ -46,11 +46,6 @@ typedef struct GPIOPinController {
     uint8_t pupd_resistor;
 } GPIOPinController;
 
-// Just sitting here 
-typedef struct PlaceHolder {
-
-} PlaceHolder;
-
 // Function definitions
 GPIOPinController createGPIOPin(uint32_t port, uint32_t pin, 
                         enum rcc_periph_clken clock, uint8_t mode, 

@@ -1,12 +1,13 @@
 /**
  * @file token.h
  * @author Nicholas Fairburn (nicholas2.fairburn@live.uwe.ac.uk)
- * @brief Include that defines TokenType, Token and TokenVector types and functions relating to them.
+ * @brief Include that defines TokenType, Token and TokenVector types and
+ * functions relating to them.
  * @version 0.1
  * @date 2024-11-18
- * 
+ *
  * @copyright Copyright (c) 2024
- * 
+ *
  */
 #ifndef TOKEN_H_
 #define TOKEN_H_
@@ -23,7 +24,7 @@
 // Enum defs
 /**
  * @brief Enum that dictates the tokens available to the user.
- * 
+ *
  */
 typedef enum TokenType {
     TOKEN_GPIO_INPUT,
@@ -50,9 +51,9 @@ typedef enum TokenType {
  * @param length length of the string.
  */
 typedef struct Token {
-    TokenType type;
+    TokenType   type;
     const char *start;
-    int length;
+    int         length;
 } Token;
 
 /**
@@ -60,7 +61,7 @@ typedef struct Token {
  * @param used current used size of vector
  * @param capacity absolute size of vector
  * @param tokens dynamic array of tokens.
- * 
+ *
  */
 typedef struct TokenVector {
     size_t used;
@@ -74,16 +75,16 @@ typedef struct TokenVector {
 #define PORTE_STM32F411RE ('E')
 #define PORTe_STM32F411RE ('e')
 
-#define PIN0 ('0')
-#define PIN9 ('9')
-#define PIN15 ('5')
-#define PIN10 ('1')
+#define PIN0              ('0')
+#define PIN9              ('9')
+#define PIN15             ('5')
+#define PIN10             ('1')
 
 // Function prototypes
 TokenVector *initTokenVector(void);
-void appendTokenVector(TokenVector *vec, Token tok);
-Token getTokenVector(TokenVector *vec, size_t index);
-size_t sizeTokenVector(TokenVector *vec);
-void deinitTokenVector(TokenVector *vec); 
+void         appendTokenVector(TokenVector *vec, Token tok);
+Token        getTokenVector(TokenVector *vec, size_t index);
+size_t       sizeTokenVector(TokenVector *vec);
+void         deinitTokenVector(TokenVector *vec);
 
 #endif
