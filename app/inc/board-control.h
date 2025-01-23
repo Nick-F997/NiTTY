@@ -44,7 +44,14 @@ void deinitBoard(BoardController *bc);
 void createDigitalPin(BoardController *bc, uint32_t port, uint32_t pin,
                 enum rcc_periph_clken clock, PeripheralType input_output, uint8_t pupd);
 uint16_t actionDigitalPin(BoardController *bc, uint32_t port, uint32_t pin, GPIOAction action);
-bool digitalPinExists(BoardController *bc, uint32_t port, uint32_t pin);
+PeripheralType pinExists(BoardController *bc, uint32_t port, uint32_t pin);
 void mutateDigitalPin(BoardController *bc, uint32_t port, uint32_t pin, PeripheralType new_type, uint8_t new_pupd);
+void mutateADCToDigital(BoardController *bc, uint32_t port, uint32_t pin,
+                enum rcc_periph_clken clock, PeripheralType input_output, uint8_t pupd);
+void mutateDigitalToADC(BoardController *bc, uint32_t port, uint32_t pin,
+                        enum rcc_periph_clken clock, uint32_t sample_time, uint32_t adc_port,
+                        uint8_t adc_channel);
+void createAnalogPin(BoardController *bc, uint32_t port, uint32_t pin, enum rcc_periph_clken clock,
+                     uint32_t sample_time, uint32_t adc_port, uint8_t adc_channel);
 
 #endif

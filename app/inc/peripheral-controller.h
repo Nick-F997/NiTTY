@@ -31,6 +31,7 @@ typedef enum PeripheralType {
     TYPE_UART,
     TYPE_ADC,
     TYPE_OTHER, // Placeholder
+    TYPE_NONE,
 } PeripheralType;
 
 /**
@@ -58,7 +59,7 @@ PeripheralController createStandardGPIO(uint32_t port, uint32_t pin,
                                         enum rcc_periph_clken clock,
                                         PeripheralType        input_output,
                                         uint8_t               pupd);
-PeripheralController createADC(uint32_t port, uint32_t pin,
+PeripheralController createStandardADCPin(uint32_t port, uint32_t pin,
                                enum rcc_periph_clken clock,
                                uint32_t sample_time, uint32_t adc_port,
                                uint8_t adc_channel);

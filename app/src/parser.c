@@ -9,6 +9,7 @@
  *
  */
 #include "parser.h"
+#include "peripheral-controller.h"
 
 /**
  * @brief Get the Clock that matches the port provided.
@@ -196,7 +197,8 @@ static bool inputOutput(BoardController *bc, TokenVector *vec,
             input_output == OP_MAKE_INPUT ? TYPE_GPIO_INPUT : TYPE_GPIO_OUTPUT;
         // If the pin doesn't exist make a new one, else just change the current
         // one.
-        if (!digitalPinExists(bc, port, pin)) {
+        PeripheralType pin_exists = pinExists(bc, port, pin);
+        if (pin_exists == TYPE_NONE) {
             // Get correct clock
             enum rcc_periph_clken clock = getClockFromPort(port);
             if (clock == CLOCK_OUT_OF_BOUNDS) {
@@ -206,10 +208,24 @@ static bool inputOutput(BoardController *bc, TokenVector *vec,
             }
             createDigitalPin(bc, port, pin, clock, type_input_output, pupd);
             printf("> created new pin.\r\n");
-        } else {
+        } else if (pin_exists == TYPE_GPIO_INPUT || pin_exists == TYPE_GPIO_OUTPUT) {
             // This pin exists so just update it.
             mutateDigitalPin(bc, port, pin, type_input_output, pupd);
             printf("> modified existing pin.\r\n");
+        } else {
+            switch (pin_exists)
+            {
+                case TYPE_ADC: {
+                    enum rcc_periph_clken clock = getClockFromPort(port);
+                    mutateADCToDigital(bc, port, pin, clock, type_input_output, pupd);
+                    printf("> Modified ADC to GPIO pin.\r\n");
+                    break;
+                }
+                default: {
+                    printf("> Failed to modify pin. You shouldn't have ended up here!\r\n");
+                    return false;
+                }
+            }
         }
         return true;
     } else {
@@ -254,7 +270,7 @@ static bool setResetToggleRead(BoardController *bc, TokenVector *vec,
             }
 
             // If the pin already exists execute command.
-            if (digitalPinExists(bc, port, pin)) {
+            if (pinExists(bc, port, pin) != TYPE_NONE) {
                 switch (operation) {
                 case OP_SET: {
                     read_response = actionDigitalPin(bc, port, pin, GPIO_SET);

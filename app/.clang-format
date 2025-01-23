@@ -1,6 +1,9 @@
 BasedOnStyle: LLVM
 IndentWidth: 4
 
+BreakBeforeBraces: Allman
+ColumnLimit: 100
+
 AlignConsecutiveDeclarations:
   Enabled: true
   AcrossEmptyLines: true
