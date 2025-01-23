@@ -18,6 +18,7 @@
 // libopencm3 includes
 #include "libopencm3/stm32/rcc.h"
 #include "libopencm3/stm32/gpio.h"
+#include "libopencm3/stm32/f4/adc.h"
 
 // local includes
 #include "token.h"
@@ -51,6 +52,8 @@ typedef enum OpCode
 
 // Shit way to make sure a clock is in bounds. 
 #define CLOCK_OUT_OF_BOUNDS (RCC_GPIOK)
+
+#define ADC_OUT_OF_BOUNDS (ADC_CHANNEL18)
 
 // Function prototypes
 bool parseTokensAndExecute(BoardController *bc, TokenVector *vec);

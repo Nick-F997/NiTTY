@@ -29,6 +29,7 @@
 typedef enum TokenType {
     TOKEN_GPIO_INPUT,
     TOKEN_GPIO_OUTPUT,
+    TOKEN_ADC,
     TOKEN_PORT_PIN,
     TOKEN_GPIO_SET,
     TOKEN_GPIO_READ,

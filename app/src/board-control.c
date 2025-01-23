@@ -353,8 +353,18 @@ uint16_t actionDigitalPin(BoardController *bc, uint32_t port, uint32_t pin, GPIO
                     gpio_toggle(port, pin);
                     break;
                 }
+                default:
+                {
+                    printf("Parse Error: port/pin provided is not GPIO.\r\n");
+                    break;
+                }
                 }
                 return 0;
+            }
+            default:
+            {
+                printf("Parse Error: port/pin provided is not GPIO.\r\n");
+                break;
             }
             }
         }

@@ -205,6 +205,7 @@ static TokenType identifierType(Scanner *scanner)
     // Switch on first character in string.
     switch (scanner->start[0])
     {
+        case 'a': return checkKeyword(scanner, 1, 2, "dc", TOKEN_ADC);
         case 'i': return checkKeyword(scanner, 1, 4, "nput", TOKEN_GPIO_INPUT);
         case 'n': return checkKeyword(scanner, 1, 3, "one", TOKEN_GPIO_NORESISTOR);
         case 'o': return checkKeyword(scanner, 1, 5, "utput", TOKEN_GPIO_OUTPUT);
@@ -310,6 +311,10 @@ static char *get_token_type_name(TokenType token)
         case TOKEN_ERROR:
         {
             return "TOKEN_ERROR";
+        }
+        case TOKEN_ADC:
+        {
+            return "TOKEN_ADC";
         }
         case TOKEN_GPIO_INPUT:
         {
