@@ -11,7 +11,9 @@
 #include "parser.h"
 #include "board-control.h"
 #include "libopencm3/stm32/f4/gpio.h"
+#include "libopencm3/stm32/f4/rcc.h"
 #include "peripheral-controller.h"
+#include "token.h"
 #include <stdint.h>
 #include <stdio.h>
 
@@ -131,7 +133,7 @@ static bool parsePortPin(Token token, uint32_t *port, uint32_t *pin)
  *
  * @return uint32_t ADC base channel
  */
-static uint32_t getADCBase(void) { return ADC1; }
+static uint32_t getADCClockBase(void) { return ADC1; }
 
 /**
  * @brief Returns the channel from the port/pin identifier. Developed based on stm32-nucleoF411RE datasheets.
@@ -140,7 +142,7 @@ static uint32_t getADCBase(void) { return ADC1; }
  * @param pin pin to identify
  * @return int The ADC channel
  */
-static int getADCFromPortPin(uint32_t port, uint32_t pin)
+static int getADCClockFromPortPin(uint32_t port, uint32_t pin)
 {
     switch (port)
     {
@@ -452,6 +454,107 @@ static bool setResetToggleRead(BoardController *bc, TokenVector *vec, OpCode ope
     return true;
 }
 
+static bool adc(BoardController *bc, TokenVector *vec)
+{
+    size_t vec_size = sizeTokenVector(vec);
+    // Ignore end of line token.
+    if (vec_size - 1 != INPUT_OUTPUT_MAX_ARGS)
+    {
+        printf("> Parse Error: Invalid input format, use \"adc <port pin>\". See documentation for more information.\r\n");
+        return false;
+    }
+
+    uint32_t port = 0;
+    uint32_t pin = 0;
+    bool     port_pin_set = false;
+
+    // Ignore the initial token - we've already parsed this.
+    for (size_t i = 1; i < vec_size; i++)
+    {
+        Token current_token = getTokenVector(vec, i);
+        switch (current_token.type) {
+            case TOKEN_EOL:
+            {
+                // ignore 
+                break;
+            }
+            case TOKEN_PORT_PIN:
+            {
+            // If we haven't already assigned the port and pin
+                if (!port_pin_set)
+                {
+                    if (!parsePortPin(current_token, &port, &pin))
+                    {
+                        printf("> Parse Error: Unable to parse ADC identifer "
+                               "\"%.*s\".",
+                               current_token.length, current_token.start);
+                        return false;
+                    }
+                    port_pin_set = true;
+                }
+                else
+                {
+                    printf("> Parse Error: Multiple ADC pins provided.\r\n");
+                    return false;
+                }
+
+                break;
+            }
+            default:
+            {
+            printf("> Parse Error: Unrecognised token while parsing: "
+                   "\"%.*s\".\r\n",
+                   current_token.length, current_token.start);
+            return false;
+            }
+        }
+    }
+    if (port_pin_set)
+    {
+        PeripheralType pin_exists = pinExists(bc, port, pin);
+        switch (pin_exists) {
+        case TYPE_GPIO_INPUT:
+        case TYPE_GPIO_OUTPUT:
+        {
+            break;
+        }
+        case TYPE_UART:
+        {
+            printf("Not implemented yet!\r\n");
+            return false;
+        }
+        case TYPE_ADC:
+        {
+            return true; // Do nothing.
+        }
+        case TYPE_NONE:
+        {
+            enum rcc_periph_clken clock = RCC_ADC1;
+            uint32_t base = getADCClockBase();
+            int channel = getADCClockFromPortPin(port, pin);
+            int sample_time = 0; // TODO: Change me! 
+            if (channel == ADC_OUT_OF_BOUNDS)
+            {
+                printf("> Error: Pin is not available for use as ADC.\r\n");
+                return false;
+            }
+            createAnalogPin(bc, port, pin, clock, sample_time,base, channel);
+            break;
+        }
+        default:
+        {
+            printf("Not implemented yet!\r\n");
+            return false;
+        }
+        }
+        return true;
+    }
+    else {
+        printf("> Parse Error: Unrecognised pin.\r\n");
+        return false;
+    }
+}
+
 /**
  * @brief Parses the token vector returned by interpret(). Executes any commands
  * interpreted.
@@ -480,8 +583,7 @@ bool parseTokensAndExecute(BoardController *bc, TokenVector *vec)
     case TOKEN_GPIO_READ:
         return setResetToggleRead(bc, vec, OP_READ);
     case TOKEN_ADC:
-        printf("ADC Token - placeholder.\r\n");
-        return true;
+        return adc(bc, vec);
     default:
     {
         printf("> Parse Error: Invalid line logic. Token \"%.*s\" is not a "

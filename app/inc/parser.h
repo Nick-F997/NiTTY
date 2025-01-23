@@ -44,6 +44,8 @@ typedef enum OpCode
 // Max args for inputOutput function
 #define INPUT_OUTPUT_MAX_ARGS (3)
 
+#define ADC_MAX_ARGS (2)
+
 // Size between ports
 #define PORT_SIZE (0x400)
 
