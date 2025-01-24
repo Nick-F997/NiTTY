@@ -19,10 +19,12 @@
 #include "libopencm3/stm32/gpio.h"
 #include "libopencm3/stm32/rcc.h"
 
-typedef struct ADCPinController {
+typedef struct ADCPinController
+{
     uint32_t              port;
     uint32_t              pin;
-    enum rcc_periph_clken clock; // Will sometimes be a peripheral clock
+    enum rcc_periph_clken clock;     // Will sometimes be a peripheral clock
+    enum rcc_periph_clken adc_clock; // Should always be ADC1_RCC
     uint16_t              sample_time;
     uint8_t               mode;
     uint32_t              adc_port;
@@ -30,8 +32,8 @@ typedef struct ADCPinController {
 
 } ADCPinController;
 
-ADCPinController createADCPin(uint32_t port, uint32_t pin,
-                              enum rcc_periph_clken clock, uint32_t sample_time,
-                              uint8_t mode, uint32_t adc_port, uint8_t adc_channel);
+ADCPinController createADCPin(uint32_t port, uint32_t pin, enum rcc_periph_clken clock,
+                              enum rcc_periph_clken adc_clock, uint32_t sample_time, uint8_t mode,
+                              uint32_t adc_port, uint8_t adc_channel);
 
 #endif

@@ -25,7 +25,8 @@
  * @brief Enum containing all types of peripheral
  *
  */
-typedef enum PeripheralType {
+typedef enum PeripheralType
+{
     TYPE_GPIO_INPUT, // Gpio single pin
     TYPE_GPIO_OUTPUT,
     TYPE_UART,
@@ -44,24 +45,24 @@ typedef enum PeripheralType {
  * @param disablePeripheral function pointer to a function that disables this
  * peripheral
  */
-typedef struct PeripheralController {
+typedef struct PeripheralController
+{
     PeripheralType type;
-    union {
+    union
+    {
         GPIOPinController gpio;
         ADCPinController  adc;
     } peripheral;
     void (*enablePeripheral)(struct PeripheralController *);
     void (*disablePeripheral)(struct PeripheralController *);
+    bool status;
 } PeripheralController;
 
 // function prototypes
-PeripheralController createStandardGPIO(uint32_t port, uint32_t pin,
-                                        enum rcc_periph_clken clock,
-                                        PeripheralType        input_output,
-                                        uint8_t               pupd);
-PeripheralController createStandardADCPin(uint32_t port, uint32_t pin,
-                               enum rcc_periph_clken clock,
-                               uint32_t sample_time, uint32_t adc_port,
-                               uint8_t adc_channel);
+PeripheralController createStandardGPIO(uint32_t port, uint32_t pin, enum rcc_periph_clken clock,
+                                        PeripheralType input_output, uint8_t pupd);
+PeripheralController createStandardADCPin(uint32_t port, uint32_t pin, enum rcc_periph_clken clock,
+                                          enum rcc_periph_clken adc_clock, uint32_t sample_time,
+                                          uint32_t adc_port, uint8_t adc_channel);
 
 #endif

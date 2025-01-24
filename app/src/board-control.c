@@ -11,7 +11,10 @@
  */
 #include "board-control.h"
 #include "clocks-control.h"
+#include "libopencm3/stm32/f4/rcc.h"
 #include "peripheral-controller.h"
+#include <stdint.h>
+#include <stdio.h>
 
 /**
  * @brief Initialise the board object. To be called at startup.
@@ -97,6 +100,25 @@ static void growPeripherals(BoardController *bc, PeripheralController periph)
 }
 
 /**
+ * @brief Indicates whether there are any adcs available.
+ *
+ * @param bc board controller
+ * @return int how many adcs are enabled.
+ */
+static int adcExists(BoardController *bc)
+{
+    int adc_count = 0;
+    for (size_t periph = 0; periph < bc->peripherals_count; periph++)
+    {
+        if (bc->peripherals[periph].type == TYPE_ADC && bc->peripherals[periph].status)
+        {
+            adc_count++;
+        }
+    }
+    return adc_count;
+}
+
+/**
  * @brief returns whether a clock object already exists for given clock
  *
  * @param bc board control object
@@ -114,6 +136,24 @@ static bool clockExists(BoardController *bc, enum rcc_periph_clken clock)
         }
     }
     return false;
+}
+
+/**
+ * @brief Uses  the enum rcc_periph_clken to disable a clock controller
+ *
+ * @param bc board controller object
+ * @param clock clock to disable
+ */
+static void disableClockWithEnum(BoardController *bc, enum rcc_periph_clken clock)
+{
+    for (size_t clock_c = 0; clock_c < bc->clocks_count; clock_c++)
+    {
+        if (bc->clocks[clock_c].clock == clock)
+        {
+            disableClock(&bc->clocks[clock_c]);
+            return;
+        }
+    }
 }
 
 /**
@@ -148,7 +188,7 @@ void createDigitalPin(BoardController *bc, uint32_t port, uint32_t pin, enum rcc
 
 /**
  * @brief Create a Analog Pin object
- * 
+ *
  * @param bc board controller object
  * @param port port of pin
  * @param pin pin
@@ -168,7 +208,18 @@ void createAnalogPin(BoardController *bc, uint32_t port, uint32_t pin, enum rcc_
         growClocks(bc, clock);
         enableClock(&bc->clocks[bc->clocks_count - 1]);
     }
-    PeripheralController pc = createStandardADCPin(port,pin, clock, sample_time, adc_port, adc_channel);
+
+    bool adc_clock_exists = clockExists(bc, RCC_ADC1);
+
+    if (!adc_clock_exists)
+    {
+        growClocks(bc, RCC_ADC1);
+        enableClock(&bc->clocks[bc->clocks_count - 1]);
+    }
+
+    // Just pass normal ADC1 clock in as adc_clock.
+    PeripheralController pc =
+        createStandardADCPin(port, pin, clock, RCC_ADC1, sample_time, adc_port, adc_channel);
     growPeripherals(bc, pc);
     bc->peripherals[bc->peripherals_count - 1].enablePeripheral(
         &bc->peripherals[bc->peripherals_count - 1]);
@@ -187,6 +238,11 @@ PeripheralType pinExists(BoardController *bc, uint32_t port, uint32_t pin)
     for (size_t periph = 0; periph < bc->peripherals_count; periph++)
     {
         PeripheralController *current_periph = &bc->peripherals[periph];
+        if (!current_periph->status)
+        {
+            continue;
+        }
+
         if (current_periph->type == TYPE_GPIO_INPUT || current_periph->type == TYPE_GPIO_OUTPUT)
         {
             if (current_periph->peripheral.gpio.port == port &&
@@ -265,8 +321,15 @@ void mutateADCToDigital(BoardController *bc, uint32_t port, uint32_t pin,
                 current_periph->peripheral.adc.pin == pin)
             {
                 current_periph->disablePeripheral(current_periph);
+
+                if (!adcExists(bc))
+                {
+                    disableClockWithEnum(bc, current_periph->peripheral.adc.adc_clock);
+                }
+
                 *current_periph = createStandardGPIO(port, pin, clock, input_output, pupd);
                 current_periph->enablePeripheral(current_periph);
+
                 return;
             }
         }
@@ -293,11 +356,21 @@ void mutateDigitalToADC(BoardController *bc, uint32_t port, uint32_t pin,
         PeripheralController *current_periph = &bc->peripherals[periph];
         if (current_periph->type == TYPE_GPIO_INPUT || current_periph->type == TYPE_GPIO_OUTPUT)
         {
-            if (current_periph->peripheral.adc.port == port &&
-                current_periph->peripheral.adc.pin == pin)
+            if (current_periph->peripheral.gpio.port == port &&
+                current_periph->peripheral.gpio.pin == pin)
             {
                 current_periph->disablePeripheral(current_periph);
-                *current_periph = createStandardADCPin(port, pin, clock, sample_time, adc_port, adc_channel);
+
+                bool adc_clock_exists = clockExists(bc, RCC_ADC1);
+
+                if (!adc_clock_exists)
+                {
+                    growClocks(bc, RCC_ADC1);
+                    enableClock(&bc->clocks[bc->clocks_count - 1]);
+                }
+
+                *current_periph = createStandardADCPin(port, pin, clock, RCC_ADC1, sample_time,
+                                                       adc_port, adc_channel);
                 current_periph->enablePeripheral(current_periph);
                 return;
             }
@@ -320,38 +393,48 @@ uint16_t actionDigitalPin(BoardController *bc, uint32_t port, uint32_t pin, GPIO
     for (size_t periph = 0; periph < bc->peripherals_count; periph++)
     {
         PeripheralController *current_periph = &bc->peripherals[periph];
-        if (current_periph->peripheral.gpio.port == port &&
-            current_periph->peripheral.gpio.pin == pin)
+        if (current_periph->type == TYPE_GPIO_INPUT || current_periph->type == TYPE_GPIO_OUTPUT)
         {
-            switch (current_periph->type)
+            if (current_periph->peripheral.gpio.port == port &&
+                current_periph->peripheral.gpio.pin == pin)
             {
-            case TYPE_GPIO_INPUT:
-            {
-                if (action == GPIO_READ)
+                switch (current_periph->type)
                 {
-                    uint16_t pin_result = gpio_get(port, pin);
-                    return pin_result;
+                case TYPE_GPIO_INPUT:
+                {
+                    if (action == GPIO_READ)
+                    {
+                        uint16_t pin_result = gpio_get(port, pin);
+                        return pin_result;
+                    }
+                    return 0;
                 }
-                return 0;
-            }
-            case TYPE_GPIO_OUTPUT:
-            {
-                switch (action)
+                case TYPE_GPIO_OUTPUT:
                 {
-                case GPIO_SET:
-                {
-                    gpio_set(port, pin);
-                    break;
-                }
-                case GPIO_CLEAR:
-                {
-                    gpio_clear(port, pin);
-                    break;
-                }
-                case GPIO_TOGGLE:
-                {
-                    gpio_toggle(port, pin);
-                    break;
+                    switch (action)
+                    {
+                    case GPIO_SET:
+                    {
+                        gpio_set(port, pin);
+                        break;
+                    }
+                    case GPIO_CLEAR:
+                    {
+                        gpio_clear(port, pin);
+                        break;
+                    }
+                    case GPIO_TOGGLE:
+                    {
+                        gpio_toggle(port, pin);
+                        break;
+                    }
+                    default:
+                    {
+                        printf("Parse Error: port/pin provided is not GPIO.\r\n");
+                        break;
+                    }
+                    }
+                    return 0;
                 }
                 default:
                 {
@@ -359,15 +442,42 @@ uint16_t actionDigitalPin(BoardController *bc, uint32_t port, uint32_t pin, GPIO
                     break;
                 }
                 }
-                return 0;
-            }
-            default:
-            {
-                printf("Parse Error: port/pin provided is not GPIO.\r\n");
-                break;
-            }
             }
         }
     }
+    return 0;
+}
+
+/**
+ * @brief Reads an analog pin
+ *
+ * @param bc board controller object
+ * @param port port
+ * @param pin pin to read
+ * @return uint16_t read value.
+ */
+uint16_t actionAnalogPin(BoardController *bc, uint32_t port, uint32_t pin)
+{
+    for (size_t periph = 0; periph < bc->peripherals_count; periph++)
+    {
+        PeripheralController *current_periph = &bc->peripherals[periph];
+        if (current_periph->type == TYPE_ADC)
+        {
+            if (current_periph->peripheral.adc.port == port &&
+                current_periph->peripheral.adc.pin == pin)
+            {
+                uint8_t channel = current_periph->peripheral.adc.adc_channel;
+                uint8_t channel_array[16];
+                channel_array[0] = channel;
+                adc_set_regular_sequence(ADC1, 1, channel_array);
+                adc_start_conversion_regular(ADC1);
+                while (!adc_eoc(ADC1))
+                    ;
+                uint16_t reg16 = adc_read_regular(ADC1);
+                return reg16;
+            }
+        }
+    }
+    printf("> Error: could not read pin.\r\n");
     return 0;
 }

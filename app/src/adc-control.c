@@ -11,15 +11,16 @@
 #include "adc-control.h"
 #include <stdint.h>
 
-ADCPinController createADCPin(uint32_t port, uint32_t pin,
-                              enum rcc_periph_clken clock, uint32_t sample_time,
-                              uint8_t mode, uint32_t adc_port,
-                              uint8_t adc_channel) {
+ADCPinController createADCPin(uint32_t port, uint32_t pin, enum rcc_periph_clken clock,
+                              enum rcc_periph_clken adc_clock, uint32_t sample_time, uint8_t mode,
+                              uint32_t adc_port, uint8_t adc_channel) {
     return (ADCPinController){.port = port,
                               .pin = pin,
                               .clock = clock,
                               .sample_time = sample_time,
                               .mode = mode,
                               .adc_port = adc_port,
-                              .adc_channel = adc_channel};
+                              .adc_channel = adc_channel,
+                              .adc_clock = adc_clock
+                              };
 }

@@ -133,63 +133,81 @@ static bool parsePortPin(Token token, uint32_t *port, uint32_t *pin)
  *
  * @return uint32_t ADC base channel
  */
-static uint32_t getADCClockBase(void) { return ADC1; }
+static uint32_t getADCBase(void) { return ADC1; }
 
 /**
- * @brief Returns the channel from the port/pin identifier. Developed based on stm32-nucleoF411RE datasheets.
- * 
+ * @brief Returns the channel from the port/pin identifier. Developed based on stm32-nucleoF411RE
+ * datasheets.
+ *
  * @param port port to identify
  * @param pin pin to identify
  * @return int The ADC channel
  */
-static int getADCClockFromPortPin(uint32_t port, uint32_t pin)
+static int getADCChannelFromPortPin(uint32_t port, uint32_t pin)
 {
     switch (port)
     {
-        case GPIOA:
+    case GPIOA:
+    {
+        switch (pin)
         {
-            switch (pin)
-            {
-            case GPIO0: return ADC_CHANNEL0;
-            case GPIO1: return ADC_CHANNEL1;
-            case GPIO4: return ADC_CHANNEL4;
-            case GPIO5: return ADC_CHANNEL5;
-            case GPIO6: return ADC_CHANNEL6;
-            case GPIO7: return ADC_CHANNEL7;
-            default: break;
-            }
+        case GPIO0:
+            return ADC_CHANNEL0;
+        case GPIO1:
+            return ADC_CHANNEL1;
+        case GPIO4:
+            return ADC_CHANNEL4;
+        case GPIO5:
+            return ADC_CHANNEL5;
+        case GPIO6:
+            return ADC_CHANNEL6;
+        case GPIO7:
+            return ADC_CHANNEL7;
+        default:
             break;
         }
-        case GPIOB:
-        {
-            switch (pin)
-            {
-            case GPIO0: return ADC_CHANNEL8;
-            case GPIO1: return ADC_CHANNEL9;
-            default: break;
-            }
-            break;
-        }
-        case GPIOC:
-        {
-            switch (pin)
-            {
-            case GPIO0: return ADC_CHANNEL10;
-            case GPIO1: return ADC_CHANNEL11;
-            case GPIO2: return ADC_CHANNEL12;
-            case GPIO3: return ADC_CHANNEL13;
-            case GPIO4: return ADC_CHANNEL14;
-            case GPIO5: return ADC_CHANNEL15;
-            default: break;
-            }
-            break;
-        }
-        default: break;
+        break;
     }
-        printf("Error: This pin is not usable for ADC.\r\n");
-        return ADC_OUT_OF_BOUNDS;
+    case GPIOB:
+    {
+        switch (pin)
+        {
+        case GPIO0:
+            return ADC_CHANNEL8;
+        case GPIO1:
+            return ADC_CHANNEL9;
+        default:
+            break;
+        }
+        break;
+    }
+    case GPIOC:
+    {
+        switch (pin)
+        {
+        case GPIO0:
+            return ADC_CHANNEL10;
+        case GPIO1:
+            return ADC_CHANNEL11;
+        case GPIO2:
+            return ADC_CHANNEL12;
+        case GPIO3:
+            return ADC_CHANNEL13;
+        case GPIO4:
+            return ADC_CHANNEL14;
+        case GPIO5:
+            return ADC_CHANNEL15;
+        default:
+            break;
+        }
+        break;
+    }
+    default:
+        break;
+    }
+    printf("Error: This pin is not usable for ADC.\r\n");
+    return ADC_OUT_OF_BOUNDS;
 }
-
 
 /**
  * @brief Creates an input or output object in board controller based on input.
@@ -421,12 +439,16 @@ static bool setResetToggleRead(BoardController *bc, TokenVector *vec, OpCode ope
                 {
                 case OP_READ:
                 {
-                    printf("> Reading ADC... (placeholder).\r\n");
+                    read_response = actionAnalogPin(bc, port, pin);
+                    printf("> READ %.*s (ADC) = %u\r\n", current_token.length, current_token.start,
+                           read_response);
                     break;
                 }
                 default:
                 {
-                    printf("> Parse Error: this operation is unavailable for this pin configuration (ADC).\r\n");
+                    printf("> Parse Error: this operation is unavailable for this pin "
+                           "configuration (ADC).\r\n");
+                    return false;
                 }
                 }
             }
@@ -458,9 +480,10 @@ static bool adc(BoardController *bc, TokenVector *vec)
 {
     size_t vec_size = sizeTokenVector(vec);
     // Ignore end of line token.
-    if (vec_size - 1 != INPUT_OUTPUT_MAX_ARGS)
+    if (vec_size - 1 != ADC_MAX_ARGS)
     {
-        printf("> Parse Error: Invalid input format, use \"adc <port pin>\". See documentation for more information.\r\n");
+        printf("> Parse Error: Invalid input format, use \"adc <port pin>\". See documentation for "
+               "more information.\r\n");
         return false;
     }
 
@@ -472,50 +495,64 @@ static bool adc(BoardController *bc, TokenVector *vec)
     for (size_t i = 1; i < vec_size; i++)
     {
         Token current_token = getTokenVector(vec, i);
-        switch (current_token.type) {
-            case TOKEN_EOL:
-            {
-                // ignore 
-                break;
-            }
-            case TOKEN_PORT_PIN:
-            {
+        switch (current_token.type)
+        {
+        case TOKEN_EOL:
+        {
+            // ignore
+            break;
+        }
+        case TOKEN_PORT_PIN:
+        {
             // If we haven't already assigned the port and pin
-                if (!port_pin_set)
+            if (!port_pin_set)
+            {
+                if (!parsePortPin(current_token, &port, &pin))
                 {
-                    if (!parsePortPin(current_token, &port, &pin))
-                    {
-                        printf("> Parse Error: Unable to parse ADC identifer "
-                               "\"%.*s\".",
-                               current_token.length, current_token.start);
-                        return false;
-                    }
-                    port_pin_set = true;
-                }
-                else
-                {
-                    printf("> Parse Error: Multiple ADC pins provided.\r\n");
+                    printf("> Parse Error: Unable to parse ADC identifer "
+                           "\"%.*s\".",
+                           current_token.length, current_token.start);
                     return false;
                 }
-
-                break;
+                port_pin_set = true;
             }
-            default:
+            else
             {
+                printf("> Parse Error: Multiple ADC pins provided.\r\n");
+                return false;
+            }
+
+            break;
+        }
+        default:
+        {
             printf("> Parse Error: Unrecognised token while parsing: "
                    "\"%.*s\".\r\n",
                    current_token.length, current_token.start);
             return false;
-            }
+        }
         }
     }
     if (port_pin_set)
     {
+        // If the pin already exists... See if we can mutate it.
         PeripheralType pin_exists = pinExists(bc, port, pin);
-        switch (pin_exists) {
+        switch (pin_exists)
+        {
         case TYPE_GPIO_INPUT:
         case TYPE_GPIO_OUTPUT:
         {
+            enum rcc_periph_clken clock = getClockFromPort(port);
+            uint32_t              base = getADCBase();
+            int                   channel = getADCChannelFromPortPin(port, pin);
+            int                   sample_time = ADC_SMPR_SMP_3CYC;
+            if (channel == ADC_OUT_OF_BOUNDS)
+            {
+                printf("> Error: Pin is not available for use as ADC.\r\n");
+                return false;
+            }
+            mutateDigitalToADC(bc, port, pin, clock, sample_time, base, channel);
+            printf("> Modified GPIO to ADC pin.\r\n");
             break;
         }
         case TYPE_UART:
@@ -529,16 +566,17 @@ static bool adc(BoardController *bc, TokenVector *vec)
         }
         case TYPE_NONE:
         {
-            enum rcc_periph_clken clock = RCC_ADC1;
-            uint32_t base = getADCClockBase();
-            int channel = getADCClockFromPortPin(port, pin);
-            int sample_time = 0; // TODO: Change me! 
+            enum rcc_periph_clken clock = getClockFromPort(port);
+            uint32_t              base = getADCBase();
+            int                   channel = getADCChannelFromPortPin(port, pin);
+            int                   sample_time = ADC_SMPR_SMP_3CYC;
             if (channel == ADC_OUT_OF_BOUNDS)
             {
                 printf("> Error: Pin is not available for use as ADC.\r\n");
                 return false;
             }
-            createAnalogPin(bc, port, pin, clock, sample_time,base, channel);
+            createAnalogPin(bc, port, pin, clock, sample_time, base, channel);
+            printf("> created new ADC pin.\r\n");
             break;
         }
         default:
@@ -549,7 +587,8 @@ static bool adc(BoardController *bc, TokenVector *vec)
         }
         return true;
     }
-    else {
+    else
+    {
         printf("> Parse Error: Unrecognised pin.\r\n");
         return false;
     }

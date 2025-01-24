@@ -23,6 +23,7 @@ static void enableStandardGPIO(PeripheralController *periph)
 {
     gpio_mode_setup(periph->peripheral.gpio.port, periph->peripheral.gpio.mode,
                     periph->peripheral.gpio.pupd_resistor, periph->peripheral.gpio.pin);
+    periph->status = true;
 }
 
 /**
@@ -34,6 +35,7 @@ static void disableStandardGPIO(PeripheralController *periph)
 {
     // Placeholder, doesn't actually need to do anything as turning of the RCC
     // surfices
+    periph->status = false;
 }
 
 /**
@@ -55,6 +57,7 @@ PeripheralController createStandardGPIO(uint32_t port, uint32_t pin, enum rcc_pe
     pc.peripheral.gpio = createGPIOPin(port, pin, clock, mode, 0, pupd);
     pc.enablePeripheral = enableStandardGPIO;
     pc.disablePeripheral = disableStandardGPIO;
+    pc.status = false;
     return pc;
 }
 
@@ -72,6 +75,7 @@ static void enableADCPin(PeripheralController *periph)
     adc_set_sample_time(periph->peripheral.adc.adc_port, periph->peripheral.adc.adc_channel,
                         periph->peripheral.adc.sample_time);
     adc_power_on(periph->peripheral.adc.adc_port);
+    periph->status = true;
 }
 
 /**
@@ -81,7 +85,7 @@ static void enableADCPin(PeripheralController *periph)
  */
 static void disableADCPin(PeripheralController *periph)
 {
-    // Needs updating
+    periph->status = true;
 }
 
 /**
@@ -93,17 +97,19 @@ static void disableADCPin(PeripheralController *periph)
  * @param sample_time sample time for adc
  * @param adc_port ADC peripheral num, on STM32F411RE its always ADC
  * @param adc_channel ADC channel out of 16.
+ * @param adc_clock ADC peripheral clock.
  * @return PeripheralController
  */
-PeripheralController createStandardADCPin(uint32_t port, uint32_t pin, enum rcc_periph_clken clock,
+PeripheralController createStandardADCPin(uint32_t port, uint32_t pin, enum rcc_periph_clken clock,enum rcc_periph_clken adc_clock,
                                           uint32_t sample_time, uint32_t adc_port,
                                           uint8_t adc_channel)
 {
     uint8_t              mode = GPIO_MODE_ANALOG;
     PeripheralController pc;
     pc.type = TYPE_ADC;
-    pc.peripheral.adc = createADCPin(port, pin, clock, sample_time, mode, adc_port, adc_channel);
+    pc.peripheral.adc = createADCPin(port, pin, clock, adc_clock, sample_time, mode, adc_port, adc_channel);
     pc.enablePeripheral = enableADCPin;
     pc.disablePeripheral = disableADCPin;
+    pc.status = false;
     return pc;
 }
