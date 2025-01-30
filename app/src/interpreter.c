@@ -1,7 +1,7 @@
 /**
  * @file interpreter.c
  * @author Nicholas Fairburn (nicholas2.fairburn@live.uwe.ac.uk)
- * @brief Logic for command line interpretation.
+ * @brief Logic for command line interpretation. It's more of a scanner than a full interpreter.
  * @version 0.1
  * @date 2024-11-18
  *
@@ -398,7 +398,7 @@ static void print_token(Token token)
  * @return true successful interpretation
  * @return false unsuccessful interpretation.
  */
-bool interpret(BoardController *bc, char *source, size_t /*unused*/length)
+bool interpret(BoardController *bc, char *source, size_t /*unused*/ length)
 {
     // initialise scanner obj
     Scanner scanner;

@@ -240,6 +240,7 @@ PeripheralType pinExists(BoardController *bc, uint32_t port, uint32_t pin)
         PeripheralController *current_periph = &bc->peripherals[periph];
         if (!current_periph->status)
         {
+            // Skip current peripheral if it is deactivated
             continue;
         }
 
