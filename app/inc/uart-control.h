@@ -49,5 +49,13 @@ void currentUartWrite(UARTController uart, uint8_t *data, uint32_t len);
 void currentUartWriteByte(UARTController uart, uint8_t byte);
 uint32_t currentUartRead(UARTController uart, uint8_t *data, uint32_t len);
 uint8_t currentUartReadByte(UARTController uart);
-bool coreUartDataAvailable(UARTController uart);
+bool currentUartDataAvailable(UARTController uart);
+
+
+#define CREATE_UART_ISR(func_name) \
+void func_name(void) {\
+do {\
+    general_uart_isr(); \
+} while (0)\
+}
 #endif

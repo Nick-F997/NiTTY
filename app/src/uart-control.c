@@ -1,14 +1,21 @@
+/**
+ * @file uart-control.c
+ * @author Nicholas Fairburn (nicholas2.fairburn@live.uwe.ac.uk)
+ * @brief Contains all logic for low level UART control.
+ * @version 0.1
+ * @date 2025-02-03
+ *
+ * @copyright Copyright (c) 2025
+ *
+ */
 #include "uart-control.h"
-#include "core/ring-buffer.h"
-#include "gpio-control.h"
-#include <stdint.h>
+#include "libopencm3/stm32/f4/nvic.h"
 
-
-static UARTController currently_active_uart = {0U}; 
+static UARTController currently_active_uart = {0U};
 
 /**
  * @brief Low level function to return UART controller
- * 
+ *
  * @param uart_handle handle for UART (e.g. USART2)
  * @param uart_clock clock for UART
  * @param baudrate baudrate for UART
@@ -21,7 +28,7 @@ static UARTController currently_active_uart = {0U};
  * @param rx_af_mode recieve alternative function mode
  * @param tx_af_mode transmit alternative function mode
  * @param nvic_entry interrupt table isr for this peripheral.
- * @return UARTController 
+ * @return UARTController
  */
 UARTController createUARTPeripheral(uint32_t uart_handle, enum rcc_periph_clken uart_clock,
                                     uint32_t baudrate, uint32_t rx_port, uint32_t tx_port,
@@ -34,12 +41,10 @@ UARTController createUARTPeripheral(uint32_t uart_handle, enum rcc_periph_clken 
         createGPIOPin(rx_port, rx_pin, rx_clock, mode, rx_af_mode, GPIO_PUPD_NONE);
     GPIOPinController tx =
         createGPIOPin(tx_port, tx_pin, tx_clock, mode, tx_af_mode, GPIO_PUPD_NONE);
-    
-    
-    ring_buffer_t rb;
-    uint8_t data_buffer[RING_BUFFER_SIZE] = {0U};
-    coreRingBufferSetup(&rb, data_buffer, RING_BUFFER_SIZE);
 
+    ring_buffer_t rb;
+    uint8_t       data_buffer[RING_BUFFER_SIZE] = {0U};
+    coreRingBufferSetup(&rb, data_buffer, RING_BUFFER_SIZE);
 
     UARTController uart = {
         .handle = uart_handle,
@@ -58,16 +63,32 @@ UARTController createUARTPeripheral(uint32_t uart_handle, enum rcc_periph_clken 
 }
 
 /**
- * @brief General UART interrupt service routine for the currently active UART controller. 
+ * @brief Define all isrs. Most should be disabled when not in use.
  * 
  */
-void general_uart_isr(void) {
-    const bool overrun_occured = usart_get_flag(currently_active_uart.handle, USART_FLAG_ORE /* Overrun flag? */) == 1;
-    const bool received_data = usart_get_flag(currently_active_uart.handle, USART_FLAG_RXNE /* Recieved data? */) == 1;
+void usart1_isr(void) { general_uart_isr(); }
+void usart3_isr(void) { general_uart_isr(); }
+void uart4_isr(void) { general_uart_isr(); }
+void uart5_isr(void) { general_uart_isr(); }
+void usart6_isr(void) { general_uart_isr(); }
+void uart7_isr(void) { general_uart_isr(); }
+void uart8_isr(void) { general_uart_isr(); }
+
+/**
+ * @brief General UART interrupt service routine for the currently active UART controller.
+ *
+ */
+void general_uart_isr(void)
+{
+    const bool overrun_occured =
+        usart_get_flag(currently_active_uart.handle, USART_FLAG_ORE /* Overrun flag? */) == 1;
+    const bool received_data =
+        usart_get_flag(currently_active_uart.handle, USART_FLAG_RXNE /* Recieved data? */) == 1;
 
     if (overrun_occured || received_data)
     {
-        if (!coreRingBufferWrite(&currently_active_uart.rb, (uint8_t)usart_recv(currently_active_uart.handle)))
+        if (!coreRingBufferWrite(&currently_active_uart.rb,
+                                 (uint8_t)usart_recv(currently_active_uart.handle)))
         {
             // Handle failure. Update buffer size.
         }
@@ -142,7 +163,4 @@ uint8_t currentUartReadByte(UARTController uart)
  * @return true if USART buffer has data
  * @return false if USART buffer does not have data.
  */
-bool coreUartDataAvailable(UARTController uart)
-{
-    return !coreRingBufferEmpty(&uart.rb);
-}
+bool currentUartDataAvailable(UARTController uart) { return !coreRingBufferEmpty(&uart.rb); }

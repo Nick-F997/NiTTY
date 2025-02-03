@@ -20,6 +20,7 @@
 // local includes
 #include "adc-control.h"
 #include "gpio-control.h"
+#include "uart-control.h"
 
 /**
  * @brief Enum containing all types of peripheral
@@ -52,11 +53,13 @@ typedef struct PeripheralController
     {
         GPIOPinController gpio;
         ADCPinController  adc;
+        UARTController uart;
     } peripheral;
     void (*enablePeripheral)(struct PeripheralController *);
     void (*disablePeripheral)(struct PeripheralController *);
     bool status;
 } PeripheralController;
+
 
 // function prototypes
 PeripheralController createStandardGPIO(uint32_t port, uint32_t pin, enum rcc_periph_clken clock,
