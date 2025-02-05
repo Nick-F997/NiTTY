@@ -9,6 +9,7 @@
  *
  */
 #include "interpreter.h"
+#include "token.h"
 
 /**
  * @brief Looks at the current character in a string.
@@ -242,7 +243,10 @@ static TokenType identifierType(Scanner *scanner)
     }
     case 't':
         return checkKeyword(scanner, 1, 5, "oggle", TOKEN_GPIO_TOGGLE);
+    case 'w':
+        return checkKeyword(scanner, 1, 4, "rite", TOKEN_WRITE);
     }
+
 
     return isValidPortPin(scanner);
 }

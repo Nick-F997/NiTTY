@@ -10,12 +10,15 @@
  */
 #include "parser.h"
 #include "board-control.h"
+#include "libopencm3/stm32/f4/adc.h"
 #include "libopencm3/stm32/f4/gpio.h"
 #include "libopencm3/stm32/f4/rcc.h"
+#include "libopencm3/stm32/f4/usart.h"
 #include "peripheral-controller.h"
 #include "token.h"
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 /**
  * @brief Get the Clock that matches the port provided.
@@ -145,65 +148,11 @@ static uint32_t getADCBase(void) { return ADC1; }
  */
 static int getADCChannelFromPortPin(uint32_t port, uint32_t pin)
 {
-    switch (port)
-    {
-    case GPIOA:
-    {
-        switch (pin)
+    for (size_t i = 0; i < ADC_PIN_MAP_SIZE; i++) {
+        if (adcPinMappings[i].port == port && adcPinMappings[i].pin == pin)
         {
-        case GPIO0:
-            return ADC_CHANNEL0;
-        case GPIO1:
-            return ADC_CHANNEL1;
-        case GPIO4:
-            return ADC_CHANNEL4;
-        case GPIO5:
-            return ADC_CHANNEL5;
-        case GPIO6:
-            return ADC_CHANNEL6;
-        case GPIO7:
-            return ADC_CHANNEL7;
-        default:
-            break;
+            return adcPinMappings[i].adc_channel;
         }
-        break;
-    }
-    case GPIOB:
-    {
-        switch (pin)
-        {
-        case GPIO0:
-            return ADC_CHANNEL8;
-        case GPIO1:
-            return ADC_CHANNEL9;
-        default:
-            break;
-        }
-        break;
-    }
-    case GPIOC:
-    {
-        switch (pin)
-        {
-        case GPIO0:
-            return ADC_CHANNEL10;
-        case GPIO1:
-            return ADC_CHANNEL11;
-        case GPIO2:
-            return ADC_CHANNEL12;
-        case GPIO3:
-            return ADC_CHANNEL13;
-        case GPIO4:
-            return ADC_CHANNEL14;
-        case GPIO5:
-            return ADC_CHANNEL15;
-        default:
-            break;
-        }
-        break;
-    }
-    default:
-        break;
     }
     printf("Error: This pin is not usable for ADC.\r\n");
     return ADC_OUT_OF_BOUNDS;
@@ -476,6 +425,14 @@ static bool setResetToggleRead(BoardController *bc, TokenVector *vec, OpCode ope
     return true;
 }
 
+/**
+ * @brief Function for defining ADC peripherals.
+ *
+ * @param bc Board Controller object
+ * @param vec vector of tokens
+ * @return true ADC successfully initialised
+ * @return false ADC not initialised
+ */
 static bool adc(BoardController *bc, TokenVector *vec)
 {
     size_t vec_size = sizeTokenVector(vec);
@@ -595,6 +552,226 @@ static bool adc(BoardController *bc, TokenVector *vec)
 }
 
 /**
+ * @brief Returns the uart handle for the provided pin. This could be done more effectively with a
+ * lookup table, but for time's sakes I'm doing it dumb.
+ *
+ * @param port to check
+ * @param pin to check
+ * @return UARTValidPin a struct containing info about that pin's possible config.
+ */
+static UARTValidPin getUARTInfo(uint32_t port, uint32_t pin) {
+    for (size_t i = 0; i < UART_PIN_MAP_SIZE; i++) {
+        if (uartPinMappings[i].port == port && uartPinMappings[i].pin == pin) {
+            return uartPinMappings[i].uartPin;
+        }
+    }
+    return UART_INVALID_PIN;
+}
+
+static bool uartInitialise(BoardController *bc, TokenVector *vec)
+{
+    size_t vec_size = sizeTokenVector(vec);
+    if (vec_size - 1 != UART_INIT_MAX_ARGS)
+    {
+        printf("> Parse Error: Invalid input format, use \"adc <port pin>\". See documentation for "
+               "more information.\r\n");
+        return false;
+    }
+
+    // Define different variables.
+    uint32_t rx_port = 0;
+    uint32_t rx_pin = 0;
+    uint32_t tx_port = 0;
+    uint32_t tx_pin = 0;
+    uint32_t baud_rate = 0;
+    bool     rx_port_pin_set = false;
+    bool     tx_port_pin_set = false;
+    bool     baud_rate_set = false;
+
+    for (size_t i = 1; i < vec_size; i++)
+    {
+        Token current_token = getTokenVector(vec, i);
+        switch (current_token.type)
+        {
+        case TOKEN_PORT_PIN:
+        {
+            // UART needs 2 pins to create. This first statment checks and creates RX pin
+            if (!rx_port_pin_set && !tx_port_pin_set)
+            {
+                if (!parsePortPin(current_token, &rx_port, &rx_pin))
+                {
+                    printf("Error: Unable to parse UART RX pin \"%.*s\".\r\n", current_token.length,
+                           current_token.start);
+                    return false;
+                }
+                rx_port_pin_set = true;
+            }
+            // This section creates TX pin
+            else if (rx_port_pin_set && !tx_port_pin_set)
+            {
+                if (!parsePortPin(current_token, &tx_port, &tx_pin))
+                {
+                    printf("Error: Unable to parse UART TX pin \"%.*s\".\r\n", current_token.length,
+                           current_token.start);
+                    return false;
+                }
+                tx_port_pin_set = true;
+            }
+            // If both pins are set the user has provided too many so error.
+            else
+            {
+                printf(
+                    "Error: too many port pin identifiers provided for UART initialisation.\r\n");
+                return false;
+            }
+            break;
+        }
+        case TOKEN_NUMBER:
+        {
+            if (!baud_rate_set)
+            {
+                baud_rate = strtoul(current_token.start, NULL, 10);
+                // This is for debugging, I will refactor it before finishing
+                switch (baud_rate)
+                {
+                case 9600:
+                {
+                    printf("9600 selected as baud rate.\r\n");
+                    break;
+                }
+                case 57600:
+                {
+                    printf("57600 selected as baud rate.\r\n");
+                    break;
+                }
+                case 115200:
+                {
+                    printf("115200 selected as baud rate.\r\n");
+                    break;
+                }
+                default:
+                {
+                    printf("Error: Baud rate must be either 9600, 57600, or 115200.\r\n");
+                    return false;
+                }
+                }
+                baud_rate_set = true;
+            }
+            break;
+        }
+        case TOKEN_EOL:
+        {
+            break;
+        }
+        default:
+        {
+            printf("> Parse Error: Unrecognised token while parsing: "
+                   "\"%.*s\".\r\n",
+                   current_token.length, current_token.start);
+            return false;
+        }
+        }
+    }
+    // If we parsed everthing properly
+    if (rx_port_pin_set && tx_port_pin_set && baud_rate_set)
+    {
+
+        // As we have to check 2 different pins, I decided it was best to get all the peripheral
+        // info (clock, handle, etc) first and then check that each pin is mutatable.
+        PeripheralType rx_exists = pinExists(bc, rx_port, rx_pin);
+        PeripheralType tx_exists = pinExists(bc, tx_port, tx_pin);
+
+        switch (rx_exists)
+        {
+        case TYPE_GPIO_INPUT:
+        case TYPE_GPIO_OUTPUT:
+        {
+            break;
+        }
+        case TYPE_UART:
+        {
+            break;
+        }
+        case TYPE_ADC:
+        {
+            break;
+        }
+        case TYPE_NONE:
+        {
+            break;
+        }
+        default:
+        {
+            break;
+        }
+        }
+
+        switch (tx_exists)
+        {
+        case TYPE_GPIO_INPUT:
+        case TYPE_GPIO_OUTPUT:
+        {
+            break;
+        }
+        case TYPE_UART:
+        {
+            break;
+        }
+        case TYPE_ADC:
+        {
+            break;
+        }
+        case TYPE_NONE:
+        {
+            break;
+        }
+        default:
+        {
+            break;
+        }
+        }
+    }
+    else
+    {
+        printf("Error: could not recognise pins.\r\n");
+        return false;
+    }
+}
+
+/**
+ * @brief UART function. Decides what to do when a UART keyword is detected.
+ *
+ * @param bc Board controller object
+ * @param vec vector of tokens
+ * @return true if uart function was successful
+ * @return false if uart function was unsuccesful
+ */
+static bool uart(BoardController *bc, TokenVector *vec)
+{
+    Token next_token = getTokenVector(vec, 1);
+    if (next_token.type == TOKEN_PORT_PIN)
+    {
+        // initialise UART
+        return uartInitialise(bc, vec);
+    }
+    else if (next_token.type == TOKEN_GPIO_READ)
+    {
+        // Read UART
+    }
+    else if (next_token.type == TOKEN_WRITE)
+    {
+        // Write UART
+    }
+    else
+    {
+        printf("> Parse Error: \"uart\" keyword must be followed by either port pin "
+               "identifier, \"read\", or \"write <string>\", not \"%.*s\".",
+               next_token.length, next_token.start);
+        return false;
+    }
+}
+
+/**
  * @brief Parses the token vector returned by interpret(). Executes any commands
  * interpreted.
  *
@@ -623,6 +800,8 @@ bool parseTokensAndExecute(BoardController *bc, TokenVector *vec)
         return setResetToggleRead(bc, vec, OP_READ);
     case TOKEN_ADC:
         return adc(bc, vec);
+    case TOKEN_UART:
+        return uart(bc, vec);
     default:
     {
         printf("> Parse Error: Invalid line logic. Token \"%.*s\" is not a "

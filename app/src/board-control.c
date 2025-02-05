@@ -260,6 +260,17 @@ PeripheralType pinExists(BoardController *bc, uint32_t port, uint32_t pin)
                 return current_periph->type;
             }
         }
+        if (current_periph->type == TYPE_UART)
+        {
+            // This peripheral has multiple pins so check both, and return if either exist.
+            if ((current_periph->peripheral.uart.RX.port == port &&
+                current_periph->peripheral.uart.RX.pin == pin) || 
+                (current_periph->peripheral.uart.TX.port == port &&
+                current_periph->peripheral.uart.TX.pin == pin))
+                {
+                    return current_periph->type;
+                }
+        }
     }
 
     return TYPE_NONE;
