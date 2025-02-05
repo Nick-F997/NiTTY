@@ -568,6 +568,26 @@ static UARTValidPin getUARTInfo(uint32_t port, uint32_t pin) {
     return UART_INVALID_PIN;
 }
 
+// This might get moved.
+static enum rcc_periph_clken getUARTclock(uint32_t handle)
+{
+    switch (handle)
+    {
+        case USART1:
+        {
+            return RCC_USART1;
+        }
+        case USART6:
+        {
+            return RCC_USART6;
+        }
+        default:
+        {
+            return CLOCK_OUT_OF_BOUNDS;
+        }
+    }
+} 
+
 static bool uartInitialise(BoardController *bc, TokenVector *vec)
 {
     size_t vec_size = sizeTokenVector(vec);
@@ -676,11 +696,52 @@ static bool uartInitialise(BoardController *bc, TokenVector *vec)
     if (rx_port_pin_set && tx_port_pin_set && baud_rate_set)
     {
 
+        UARTValidPin rx_validity = getUARTInfo(rx_port, rx_pin);
+        UARTValidPin tx_validity = getUARTInfo(tx_port, tx_pin);
+
+        // Check they're both valid UART pins
+        if (!rx_validity.isValid || !tx_validity.isValid)
+        {
+            printf("Error: one or both of the pins provided are not available as UART. Please consult datasheet.\r\n");
+            return false;
+        }
+
+        // Check both can be in the right config.
+        if (!rx_validity.isRx || !tx_validity.isTx)
+        {
+            printf("Error: one or both of the pins provided cannot be used as TX/RX. Please consult datasheet.\r\n");
+            return false;
+        }
+        
+        // Check they're part of the same UART handle
+
+
+        if (!(rx_validity.handle == tx_validity.handle))
+        {
+            printf("Error: Pins are available as UART but not for the same UART peripheral. Consult datasheet.\r\n");
+            return false;
+        }
+
+        // Either will do at this point.
+        uint32_t handle = rx_validity.handle;
+        enum rcc_periph_clken uart_clock = getUARTclock(handle);
+
+        // These two should be the same
+        enum rcc_periph_clken rx_clock = getClockFromPort(rx_port);
+        enum rcc_periph_clken tx_clock = getClockFromPort(tx_port);
+
         // As we have to check 2 different pins, I decided it was best to get all the peripheral
         // info (clock, handle, etc) first and then check that each pin is mutatable.
         PeripheralType rx_exists = pinExists(bc, rx_port, rx_pin);
         PeripheralType tx_exists = pinExists(bc, tx_port, tx_pin);
 
+        if (rx_exists == TYPE_NONE && tx_exists == TYPE_NONE)
+        {
+            // This means neither pin was already set up. We can set up normally. 
+        }
+        else {
+            
+        }
         switch (rx_exists)
         {
         case TYPE_GPIO_INPUT:
@@ -690,10 +751,12 @@ static bool uartInitialise(BoardController *bc, TokenVector *vec)
         }
         case TYPE_UART:
         {
+            // Do nothing, if we've gotten this far it should already be in the correct configuration.
             break;
         }
         case TYPE_ADC:
         {
+
             break;
         }
         case TYPE_NONE:
