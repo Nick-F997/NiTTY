@@ -598,6 +598,12 @@ static enum rcc_periph_clken getUARTclock(uint32_t handle)
     }
 }
 
+/**
+ * @brief Gets the NVIC table entry for the specified UART
+ * 
+ * @param handle UART handle
+ * @return int NVIC table entry
+ */
 static int getUARTNVICEntry(uint32_t handle)
 {
     switch (handle)
@@ -617,6 +623,14 @@ static int getUARTNVICEntry(uint32_t handle)
     }
 }
 
+/**
+ * @brief Parse a UART command and initialises a UART peripheral from scratch.
+ * 
+ * @param bc board controller object
+ * @param vec vector of tokens
+ * @return true set up successfully
+ * @return false set up unsuccessful 
+ */
 static bool uartInitialise(BoardController *bc, TokenVector *vec)
 {
     size_t vec_size = sizeTokenVector(vec);
@@ -681,28 +695,14 @@ static bool uartInitialise(BoardController *bc, TokenVector *vec)
             {
                 baud_rate = strtoul(current_token.start, NULL, 10);
                 // This is for debugging, I will refactor it before finishing
-                switch (baud_rate)
+                if ((baud_rate == 9600) || (baud_rate == 57600) || (baud_rate == 115200))
                 {
-                case 9600:
-                {
-                    printf("9600 selected as baud rate.\r\n");
-                    break;
+                    printf("> Baud rate selected: %ul\r\n", baud_rate);
                 }
-                case 57600:
-                {
-                    printf("57600 selected as baud rate.\r\n");
-                    break;
-                }
-                case 115200:
-                {
-                    printf("115200 selected as baud rate.\r\n");
-                    break;
-                }
-                default:
-                {
+                else
+                {    
                     printf("Error: Baud rate must be either 9600, 57600, or 115200.\r\n");
                     return false;
-                }
                 }
                 baud_rate_set = true;
             }
@@ -766,6 +766,7 @@ static bool uartInitialise(BoardController *bc, TokenVector *vec)
         PeripheralType rx_exists = pinExists(bc, rx_port, rx_pin);
         PeripheralType tx_exists = pinExists(bc, tx_port, tx_pin);
 
+        // Get the NVIC entry for this specific UART
         int            nvic_entry = getUARTNVICEntry(handle);
         if (nvic_entry == 0)
         {
@@ -773,6 +774,8 @@ static bool uartInitialise(BoardController *bc, TokenVector *vec)
             return false;
         }
 
+        // Here's where we actually build the UART peripheral
+        // First option if both pins are free
         if (rx_exists == TYPE_NONE && tx_exists == TYPE_NONE)
         {
             // This means neither pin was already set up. We can set up normally.
@@ -782,6 +785,7 @@ static bool uartInitialise(BoardController *bc, TokenVector *vec)
         }
         else
         {
+            // If one or both pins are already initialised, this gets executed.
             if (rx_exists != TYPE_NONE && tx_exists == TYPE_NONE)
             {
                 killPeripheralOrPin(bc, rx_port, rx_pin);
@@ -796,6 +800,7 @@ static bool uartInitialise(BoardController *bc, TokenVector *vec)
                 killPeripheralOrPin(bc, tx_port, tx_pin);
             }
 
+            // After all those peripherals are killed, we just build the UART as normal.
             createUART(bc, handle, uart_clock, baud_rate, rx_port, tx_port, rx_pin, tx_pin,
                        rx_clock, tx_clock, rx_validity.af_mode, tx_validity.af_mode, nvic_entry);
             printf("> Created new UART peripheral.\r\n");
