@@ -13,6 +13,7 @@
 #include "clocks-control.h"
 #include "libopencm3/stm32/f4/rcc.h"
 #include "peripheral-controller.h"
+#include "uart-control.h"
 #include <stdint.h>
 #include <stdio.h>
 
@@ -226,6 +227,58 @@ void createAnalogPin(BoardController *bc, uint32_t port, uint32_t pin, enum rcc_
 }
 
 /**
+ * @brief Creates a UART peripheral in the board controller object
+ *
+ * @param bc board ocntroller
+ * @param handle uart handle
+ * @param uart_clock uart clock
+ * @param baudrate baudrate for uart
+ * @param rx_port port for rx
+ * @param tx_port port for tx
+ * @param rx_pin rx pin
+ * @param tx_pin tx pin
+ * @param rx_clock rx port clock
+ * @param tx_clock tx port clock
+ * @param rx_af_mode AF mode for rx (either 0x7 or 0x8)
+ * @param tx_af_mode AF mode for tx (either 0x7 or 0x8)
+ * @param nvic_entry interrupt table entry.
+ */
+void createUART(BoardController *bc, uint32_t handle, enum rcc_periph_clken uart_clock,
+                uint32_t baudrate, uint32_t rx_port, uint32_t tx_port, uint32_t rx_pin,
+                uint32_t tx_pin, enum rcc_periph_clken rx_clock, enum rcc_periph_clken tx_clock,
+                uint8_t rx_af_mode, uint8_t tx_af_mode, int nvic_entry)
+{
+
+    bool uart_clock_exists = clockExists(bc, uart_clock);
+    bool rx_clock_exists = clockExists(bc, rx_clock);
+    bool tx_clock_exists = clockExists(bc, tx_clock);
+
+    if (!uart_clock_exists)
+    {
+        growClocks(bc, uart_clock);
+        enableClock(&bc->clocks[bc->clocks_count - 1]);
+    }
+
+    if (!rx_clock_exists)
+    {
+        growClocks(bc, rx_clock);
+        enableClock(&bc->clocks[bc->clocks_count - 1]);
+    }
+
+    if (!tx_clock_exists)
+    {
+        growClocks(bc, tx_clock);
+        enableClock(&bc->clocks[bc->clocks_count - 1]);
+    }
+    PeripheralController pc =
+        createStandardUARTUSART(handle, uart_clock, baudrate, rx_port, tx_port, rx_pin, tx_pin,
+                                rx_clock, tx_clock, rx_af_mode, tx_af_mode, nvic_entry);
+    growPeripherals(bc, pc);
+    bc->peripherals[bc->peripherals_count - 1].enablePeripheral(
+        &bc->peripherals[bc->peripherals_count - 1]);
+}
+
+/**
  * @brief Returns where a pin is already initialised or not.
  *
  * @param bc board controller to check
@@ -264,12 +317,12 @@ PeripheralType pinExists(BoardController *bc, uint32_t port, uint32_t pin)
         {
             // This peripheral has multiple pins so check both, and return if either exist.
             if ((current_periph->peripheral.uart.RX.port == port &&
-                current_periph->peripheral.uart.RX.pin == pin) || 
+                 current_periph->peripheral.uart.RX.pin == pin) ||
                 (current_periph->peripheral.uart.TX.port == port &&
-                current_periph->peripheral.uart.TX.pin == pin))
-                {
-                    return current_periph->type;
-                }
+                 current_periph->peripheral.uart.TX.pin == pin))
+            {
+                return current_periph->type;
+            }
         }
     }
 
@@ -342,6 +395,60 @@ void mutateADCToDigital(BoardController *bc, uint32_t port, uint32_t pin,
                 *current_periph = createStandardGPIO(port, pin, clock, input_output, pupd);
                 current_periph->enablePeripheral(current_periph);
 
+                return;
+            }
+        }
+    }
+}
+
+/**
+ * @brief Function to disable a pin entirely
+ * 
+ * @param bc Board controller
+ * @param port port of pin to disable
+ * @param pin pin to disable
+ */
+void killPeripheralOrPin(BoardController *bc, uint32_t port, uint32_t pin)
+{
+    for (size_t periph = 0; periph < bc->peripherals_count; periph++)
+    {
+        PeripheralController *current_periph = &bc->peripherals[periph];
+        if (!current_periph->status)
+        {
+            continue;
+        }
+
+        if (current_periph->type == TYPE_ADC)
+        {
+            if (current_periph->peripheral.adc.port == port &&
+                current_periph->peripheral.adc.pin == pin)
+            {
+                current_periph->disablePeripheral(current_periph);
+                if (!adcExists(bc))
+                {
+                    disableClockWithEnum(bc, current_periph->peripheral.adc.adc_clock);
+                }
+                return;
+            }
+        }
+        if (current_periph->type == TYPE_GPIO_INPUT || current_periph->type == TYPE_GPIO_OUTPUT)
+        {
+            if (current_periph->peripheral.gpio.port == port &&
+                current_periph->peripheral.gpio.pin == pin)
+            {
+                current_periph->disablePeripheral(current_periph);
+                return;
+            }
+        }
+        if (current_periph->type == TYPE_UART)
+        {
+            if ((current_periph->peripheral.uart.RX.port == port &&
+                 current_periph->peripheral.uart.RX.pin) ||
+                (current_periph->peripheral.uart.TX.port == port &&
+                 current_periph->peripheral.uart.TX.pin))
+            {
+                disableClockWithEnum(bc,current_periph->peripheral.uart.uart_clock);
+                current_periph->disablePeripheral(current_periph);
                 return;
             }
         }

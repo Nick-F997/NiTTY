@@ -67,5 +67,11 @@ PeripheralController createStandardGPIO(uint32_t port, uint32_t pin, enum rcc_pe
 PeripheralController createStandardADCPin(uint32_t port, uint32_t pin, enum rcc_periph_clken clock,
                                           enum rcc_periph_clken adc_clock, uint32_t sample_time,
                                           uint32_t adc_port, uint8_t adc_channel);
+PeripheralController createStandardUARTUSART(uint32_t uart_handle, enum rcc_periph_clken uart_clock,
+                                             uint32_t baudrate, uint32_t rx_port, uint32_t tx_port,
+                                             uint32_t rx_pin, uint32_t tx_pin,
+                                             enum rcc_periph_clken rx_clock,
+                                             enum rcc_periph_clken tx_clock, uint8_t rx_af_mode,
+                                             uint8_t tx_af_mode, int nvic_entry);                                          
 
 #endif

@@ -12,6 +12,7 @@
 #include "board-control.h"
 #include "libopencm3/stm32/f4/adc.h"
 #include "libopencm3/stm32/f4/gpio.h"
+#include "libopencm3/stm32/f4/nvic.h"
 #include "libopencm3/stm32/f4/rcc.h"
 #include "libopencm3/stm32/f4/usart.h"
 #include "peripheral-controller.h"
@@ -148,7 +149,8 @@ static uint32_t getADCBase(void) { return ADC1; }
  */
 static int getADCChannelFromPortPin(uint32_t port, uint32_t pin)
 {
-    for (size_t i = 0; i < ADC_PIN_MAP_SIZE; i++) {
+    for (size_t i = 0; i < ADC_PIN_MAP_SIZE; i++)
+    {
         if (adcPinMappings[i].port == port && adcPinMappings[i].pin == pin)
         {
             return adcPinMappings[i].adc_channel;
@@ -559,34 +561,61 @@ static bool adc(BoardController *bc, TokenVector *vec)
  * @param pin to check
  * @return UARTValidPin a struct containing info about that pin's possible config.
  */
-static UARTValidPin getUARTInfo(uint32_t port, uint32_t pin) {
-    for (size_t i = 0; i < UART_PIN_MAP_SIZE; i++) {
-        if (uartPinMappings[i].port == port && uartPinMappings[i].pin == pin) {
+static UARTValidPin getUARTInfo(uint32_t port, uint32_t pin)
+{
+    for (size_t i = 0; i < UART_PIN_MAP_SIZE; i++)
+    {
+        if (uartPinMappings[i].port == port && uartPinMappings[i].pin == pin)
+        {
             return uartPinMappings[i].uartPin;
         }
     }
     return UART_INVALID_PIN;
 }
 
-// This might get moved.
+/**
+ * @brief Returns the clock corresponding to the uart handle
+ *
+ * @param handle handle to get clock for
+ * @return enum rcc_periph_clken identified
+ */
 static enum rcc_periph_clken getUARTclock(uint32_t handle)
 {
     switch (handle)
     {
-        case USART1:
-        {
-            return RCC_USART1;
-        }
-        case USART6:
-        {
-            return RCC_USART6;
-        }
-        default:
-        {
-            return CLOCK_OUT_OF_BOUNDS;
-        }
+    case USART1:
+    {
+        return RCC_USART1;
     }
-} 
+    case USART6:
+    {
+        return RCC_USART6;
+    }
+    default:
+    {
+        return CLOCK_OUT_OF_BOUNDS;
+    }
+    }
+}
+
+static int getUARTNVICEntry(uint32_t handle)
+{
+    switch (handle)
+    {
+    case USART1:
+    {
+        return NVIC_USART1_IRQ;
+    }
+    case USART6:
+    {
+        return NVIC_USART6_IRQ;
+    }
+    default:
+    {
+        return 0;
+    }
+    }
+}
 
 static bool uartInitialise(BoardController *bc, TokenVector *vec)
 {
@@ -702,28 +731,30 @@ static bool uartInitialise(BoardController *bc, TokenVector *vec)
         // Check they're both valid UART pins
         if (!rx_validity.isValid || !tx_validity.isValid)
         {
-            printf("Error: one or both of the pins provided are not available as UART. Please consult datasheet.\r\n");
+            printf("Error: one or both of the pins provided are not available as UART. Please "
+                   "consult datasheet.\r\n");
             return false;
         }
 
         // Check both can be in the right config.
         if (!rx_validity.isRx || !tx_validity.isTx)
         {
-            printf("Error: one or both of the pins provided cannot be used as TX/RX. Please consult datasheet.\r\n");
+            printf("Error: one or both of the pins provided cannot be used as TX/RX. Please "
+                   "consult datasheet.\r\n");
             return false;
         }
-        
-        // Check they're part of the same UART handle
 
+        // Check they're part of the same UART handle
 
         if (!(rx_validity.handle == tx_validity.handle))
         {
-            printf("Error: Pins are available as UART but not for the same UART peripheral. Consult datasheet.\r\n");
+            printf("Error: Pins are available as UART but not for the same UART peripheral. "
+                   "Consult datasheet.\r\n");
             return false;
         }
 
         // Either will do at this point.
-        uint32_t handle = rx_validity.handle;
+        uint32_t              handle = rx_validity.handle;
         enum rcc_periph_clken uart_clock = getUARTclock(handle);
 
         // These two should be the same
@@ -735,64 +766,41 @@ static bool uartInitialise(BoardController *bc, TokenVector *vec)
         PeripheralType rx_exists = pinExists(bc, rx_port, rx_pin);
         PeripheralType tx_exists = pinExists(bc, tx_port, tx_pin);
 
+        int            nvic_entry = getUARTNVICEntry(handle);
+        if (nvic_entry == 0)
+        {
+            printf("Error: Could not find NVIC entry for that UART port.\r\n");
+            return false;
+        }
+
         if (rx_exists == TYPE_NONE && tx_exists == TYPE_NONE)
         {
-            // This means neither pin was already set up. We can set up normally. 
+            // This means neither pin was already set up. We can set up normally.
+            createUART(bc, handle, uart_clock, baud_rate, rx_port, tx_port, rx_pin, tx_pin,
+                       rx_clock, tx_clock, rx_validity.af_mode, tx_validity.af_mode, nvic_entry);
+            printf("> Created new UART peripheral.\r\n");
         }
-        else {
-            
-        }
-        switch (rx_exists)
+        else
         {
-        case TYPE_GPIO_INPUT:
-        case TYPE_GPIO_OUTPUT:
-        {
-            break;
-        }
-        case TYPE_UART:
-        {
-            // Do nothing, if we've gotten this far it should already be in the correct configuration.
-            break;
-        }
-        case TYPE_ADC:
-        {
+            if (rx_exists != TYPE_NONE && tx_exists == TYPE_NONE)
+            {
+                killPeripheralOrPin(bc, rx_port, rx_pin);
+            }
+            else if (rx_exists == TYPE_NONE && tx_exists != TYPE_NONE)
+            {
+                killPeripheralOrPin(bc, tx_port, tx_pin);
+            }
+            else
+            {
+                killPeripheralOrPin(bc, rx_port, rx_pin);
+                killPeripheralOrPin(bc, tx_port, tx_pin);
+            }
 
-            break;
+            createUART(bc, handle, uart_clock, baud_rate, rx_port, tx_port, rx_pin, tx_pin,
+                       rx_clock, tx_clock, rx_validity.af_mode, tx_validity.af_mode, nvic_entry);
+            printf("> Created new UART peripheral.\r\n");
         }
-        case TYPE_NONE:
-        {
-            break;
-        }
-        default:
-        {
-            break;
-        }
-        }
-
-        switch (tx_exists)
-        {
-        case TYPE_GPIO_INPUT:
-        case TYPE_GPIO_OUTPUT:
-        {
-            break;
-        }
-        case TYPE_UART:
-        {
-            break;
-        }
-        case TYPE_ADC:
-        {
-            break;
-        }
-        case TYPE_NONE:
-        {
-            break;
-        }
-        default:
-        {
-            break;
-        }
-        }
+        return true;
     }
     else
     {
