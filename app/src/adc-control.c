@@ -11,6 +11,19 @@
 #include "adc-control.h"
 #include <stdint.h>
 
+/**
+ * @brief Creates the lowest level ADC controller
+ * 
+ * @param port ADC port
+ * @param pin ADC pin
+ * @param clock GPIO clock
+ * @param adc_clock ADC clock
+ * @param sample_time sampler rate for adc
+ * @param mode GPIO mode, will always be ADC
+ * @param adc_port ADC handle
+ * @param adc_channel ADC channel
+ * @return ADCPinController 
+ */
 ADCPinController createADCPin(uint32_t port, uint32_t pin, enum rcc_periph_clken clock,
                               enum rcc_periph_clken adc_clock, uint32_t sample_time, uint8_t mode,
                               uint32_t adc_port, uint8_t adc_channel) {

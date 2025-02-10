@@ -52,6 +52,12 @@ OPT		:= -Os
 DEBUG		:= -ggdb3
 CSTD		?= -std=c99
 
+###############################################################################
+# Version Info
+VERSION_MJR = 1
+VERSION_MIN = 0
+GIT_VERSION = $(shell git rev-parse --short HEAD)
+DEFS += -D VERSION_MJR=\"$(VERSION_MJR)\" -D VERSION_MIN=\"$(VERSION_MIN)\" -D GIT_VERSION=\"$(GIT_VERSION)\"
 
 ###############################################################################
 # Source files

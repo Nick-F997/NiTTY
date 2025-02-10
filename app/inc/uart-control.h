@@ -51,7 +51,7 @@ uint32_t currentUartRead(UARTController uart, uint8_t *data, uint32_t len);
 uint8_t currentUartReadByte(UARTController uart);
 bool currentUartDataAvailable(UARTController uart);
 
-
+// Unused
 #define CREATE_UART_ISR(func_name) \
 void func_name(void) {\
 do {\

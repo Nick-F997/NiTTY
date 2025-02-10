@@ -23,6 +23,7 @@
 #include "sys_timer.h"
 #include "board-control.h"
 #include "interpreter.h"
+#include "version.h"
 
 // Size of the bootloader binary
 #define BOOTLOADER_SIZE     (0x8000U)
@@ -37,6 +38,23 @@
  */
 static void loc_vector_setup(void) {
     SCB_VTOR = BOOTLOADER_SIZE; // Offset main Vector Table by size of bootloader so it knows where to look.
+}
+
+/**
+ * @brief Prints the NiTTY logo. 
+ * 
+ */
+static void print_logo(void)
+{
+    printf(" _____________________________\r\n");
+    printf("(  _   _ _ _____ _______   __ )\r\n");
+    printf("| | \\ | (_|_   _|_   _\\ \\ / / |\r\n");
+    printf("| |  \\| | | | |   | |  \\ V /  |\r\n");
+    printf("| | |\\  | | | |   | |   | |   |\r\n");
+    printf("| |_| \\_|_| |_|   |_|   |_|   |\r\n");
+    printf("(_____________________________)\r\n");
+    printf("Version: %s.%s\r\n", VERSION_MJR, VERSION_MIN);
+    printf("Git commit: %s\r\n", GIT_VERSION);
 }
 
 /**
@@ -96,7 +114,9 @@ int main(void)
     // Setup reserved UART port 2.    
     coreUartSetup(115200);
     
+    print_logo();
     printf("-- Welcome to NiTTY --\r\n");
+    printf("Please see documentation for any help!\r\n");
     BoardController *board = initBoard();
     //createDigitalPin(board, BUILTIN_LD2_PORT, BUILTIN_LD2_PIN, RCC_GPIOA, TYPE_GPIO_OUTPUT, GPIO_PUPD_NONE);
     
