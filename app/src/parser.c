@@ -861,10 +861,34 @@ static bool uart(BoardController *bc, TokenVector *vec)
     else if (next_token.type == TOKEN_GPIO_READ)
     {
         // Read UART
+        char read_buffer[UART_MAX_READ];
+        uint32_t read_size = readUARTPort(bc, read_buffer, (size_t)UART_MAX_READ);
+        if (read_size > 0)
+        {
+            printf("> UART READ = \"%s\" (%ul bytes)\r\n", read_buffer, read_size);
+            return true;
+        }
+        else {
+            printf("> Error: UART buffer empty.\r\n");
+            return false;
+        }
     }
     else if (next_token.type == TOKEN_WRITE)
     {
         // Write UART
+        next_token = getTokenVector(vec, 2);
+        if (next_token.type == TOKEN_STRING)
+        {
+            const char *string_to_send = next_token.start;
+            size_t length = (size_t)next_token.length;
+            uint32_t size_written = writeUARTPort(bc, string_to_send, length);
+            printf("> UART WROTE %ul BYTES.\r\n", size_written);
+            return true;
+        }
+        else {
+            printf("> Error: \"uart write\" function must be followed by string enclosed in qoutes (\").\r\n");
+            return false;
+        }
     }
     else
     {

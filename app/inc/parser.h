@@ -94,6 +94,8 @@ static const ADCPinMapping adcPinMappings[] = {
 #define UART6_RX_PIN ((UARTValidPin) {.isValid = true, .handle = USART6, .isTx = false, .isRx = true, .af_mode = UART6_AF})
 #define UART_INVALID_PIN ((UARTValidPin){.isValid = false, .handle = 0, .isRx = false, .isTx = false, .af_mode = 0})
 
+#define UART_MAX_READ (32)
+
 // Defines for UART pin mappings
 typedef struct {
     uint32_t port;

@@ -61,5 +61,8 @@ void createUART(BoardController *bc, uint32_t handle, enum rcc_periph_clken uart
                 uint32_t tx_pin, enum rcc_periph_clken rx_clock, enum rcc_periph_clken tx_clock,
                 uint8_t rx_af_mode, uint8_t tx_af_mode, int nvic_entry);
 void killPeripheralOrPin(BoardController *bc, uint32_t port, uint32_t pin);
+uint32_t readUARTPort(BoardController *bc, char *data, size_t len);
+uint32_t writeUARTPort(BoardController *bc, const char *data, size_t len);
+
 
 #endif

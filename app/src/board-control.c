@@ -14,6 +14,7 @@
 #include "libopencm3/stm32/f4/rcc.h"
 #include "peripheral-controller.h"
 #include "uart-control.h"
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -117,6 +118,19 @@ static int adcExists(BoardController *bc)
         }
     }
     return adc_count;
+}
+
+static bool uartExists(BoardController *bc, UARTController *current_uart)
+{
+    for (size_t periph = 0; periph < bc->peripherals_count; periph++)
+    {
+        if (bc->peripherals[periph].type == TYPE_UART && bc->peripherals[periph].status)
+        {
+            current_uart = &bc->peripherals[periph].peripheral.uart;
+            return true;
+        }
+    }
+    return false;
 }
 
 /**
@@ -599,4 +613,50 @@ uint16_t actionAnalogPin(BoardController *bc, uint32_t port, uint32_t pin)
     }
     printf("> Error: could not read pin.\r\n");
     return 0;
+}
+
+/**
+ * @brief Read whatever is in the current UART data buffer up to length provided
+ * 
+ * @param bc Board controller object
+ * @param data array of return data.
+ * @param len max length of read.
+ * @return uint32_t length of read data.
+ */
+uint32_t readUARTPort(BoardController *bc, char *data, size_t len)
+{
+    UARTController uart_to_read;
+    if (uartExists(bc, &uart_to_read)) {
+        size_t count = 0;
+        while (currentUartDataAvailable(uart_to_read) && count < len) {
+            char byte = (char)currentUartReadByte(uart_to_read);
+            data[count++] = byte; 
+        }
+        return (uint32_t)count;      
+    }
+    else {
+        printf("> Error: No uart exists!\r\n");
+        return 0;
+    }
+}
+
+/**
+ * @brief Function to write to current UART port. 
+ * 
+ * @param bc board controller object
+ * @param data data to write
+ * @param len length of data
+ * @return uint32_t length written, should be = to len, 0 if not written. 
+ */
+uint32_t writeUARTPort(BoardController *bc, const char *data, size_t len)
+{
+    UARTController uart_to_write;
+    if (uartExists(bc, &uart_to_write)) {
+        currentUartWrite(uart_to_write, (uint8_t *)data, len);
+        return len;
+    }
+    else {
+        printf("> Error: No uart exists!\r\n");
+        return 0;
+    }
 }
