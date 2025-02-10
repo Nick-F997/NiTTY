@@ -725,7 +725,7 @@ static bool uartInitialise(BoardController *bc, TokenVector *vec)
                 // This is for debugging, I will refactor it before finishing
                 if ((baud_rate == 9600) || (baud_rate == 57600) || (baud_rate == 115200))
                 {
-                    printf("> Baud rate selected: %ul\r\n", baud_rate);
+                    printf("> Baud rate selected: %lu\r\n", baud_rate);
                 }
                 else
                 {    
@@ -865,7 +865,7 @@ static bool uart(BoardController *bc, TokenVector *vec)
         uint32_t read_size = readUARTPort(bc, read_buffer, (size_t)UART_MAX_READ);
         if (read_size > 0)
         {
-            printf("> UART READ = \"%s\" (%ul bytes)\r\n", read_buffer, read_size);
+            printf("> UART READ = \"%s\" (%lu bytes)\r\n", read_buffer, read_size);
             return true;
         }
         else {
@@ -882,7 +882,7 @@ static bool uart(BoardController *bc, TokenVector *vec)
             const char *string_to_send = next_token.start;
             size_t length = (size_t)next_token.length;
             uint32_t size_written = writeUARTPort(bc, string_to_send, length);
-            printf("> UART WROTE %ul BYTES.\r\n", size_written);
+            printf("> UART WROTE %lu BYTES.\r\n", size_written);
             return true;
         }
         else {

@@ -120,6 +120,14 @@ static int adcExists(BoardController *bc)
     return adc_count;
 }
 
+/**
+ * @brief Checks to see if a UART is currently being used.
+ * 
+ * @param bc Board controller object.
+ * @param current_uart return value of the uart.
+ * @return true 
+ * @return false 
+ */
 static bool uartExists(BoardController *bc, UARTController *current_uart)
 {
     for (size_t periph = 0; periph < bc->peripherals_count; periph++)

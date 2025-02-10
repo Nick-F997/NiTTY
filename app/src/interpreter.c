@@ -369,6 +369,14 @@ static char *get_token_type_name(TokenType token)
     {
         return "TOKEN_GPIO_PULLDOWN";
     }
+    case TOKEN_UART:
+    {
+        return "TOKEN_UART";
+    }
+    case TOKEN_WRITE:
+    {
+        return "TOKEN_WRITE";
+    }
     }
     return "UNKNOWN_TOKEN";
 }
