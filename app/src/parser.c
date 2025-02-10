@@ -285,9 +285,22 @@ static bool inputOutput(BoardController *bc, TokenVector *vec, OpCode input_outp
             {
             case TYPE_ADC:
             {
+                // Don't need to check if clock is valid because it should be already
                 enum rcc_periph_clken clock = getClockFromPort(port);
                 mutateADCToDigital(bc, port, pin, clock, type_input_output, pupd);
                 printf("> Modified ADC to GPIO pin.\r\n");
+                break;
+            }
+            case TYPE_UART:
+            {
+                // Kill entire UART peripheral
+                printf("> Warning: Disabling entire UART port to convert to GPIO...\r\n");
+                killPeripheralOrPin(bc, port, pin);
+                // Don't need to check if clock is valid because it should be already
+                enum rcc_periph_clken clock = getClockFromPort(port);
+                // Recreate GPIO from scratch.
+                createDigitalPin(bc, port, pin, clock, type_input_output, pupd);
+                printf("> Modified UART to GPIO pin.\r\n");
                 break;
             }
             default:
@@ -516,8 +529,23 @@ static bool adc(BoardController *bc, TokenVector *vec)
         }
         case TYPE_UART:
         {
-            printf("Not implemented yet!\r\n");
-            return false;
+            // Only difference with UART is the whole peripheral gets turned off.
+
+            // Turn off the whole UART port
+            printf("> Warning: Disabling entire UART port to convert to ADC...\r\n");
+            killPeripheralOrPin(bc, port, pin);
+            enum rcc_periph_clken clock = getClockFromPort(port);
+            uint32_t              base = getADCBase();
+            int                   channel = getADCChannelFromPortPin(port, pin);
+            int                   sample_time = ADC_SMPR_SMP_3CYC;
+            if (channel == ADC_OUT_OF_BOUNDS)
+            {
+                printf("> Error: Pin is not available for use as ADC.\r\n");
+                return false;
+            }
+            createAnalogPin(bc, port, pin, clock, sample_time, base, channel);
+            printf("> created new ADC pin.\r\n");
+            break;
         }
         case TYPE_ADC:
         {
