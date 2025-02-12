@@ -9,6 +9,11 @@
  * 
  */
 #include "clocks-control.h"
+#include "debug.h"
+
+#ifdef DEBUG
+#include <stdio.h>
+#endif
 
 /**
  * @brief Create a clock object, disabled by default
@@ -30,6 +35,9 @@ void enableClock(ClockController *clock_controller)
 {
     if (!clock_controller->clock_enabled)
     {
+        #ifdef DEBUG
+        printf("Clock enabled.\r\n");
+        #endif
         rcc_periph_clock_enable(clock_controller->clock);
         clock_controller->clock_enabled = true;
     }
@@ -44,6 +52,9 @@ void disableClock(ClockController *clock_controller)
 {
     if (clock_controller->clock_enabled)
     {
+        #ifdef DEBUG
+        printf("Clock disabled.\r\n");
+        #endif
         rcc_periph_clock_disable(clock_controller->clock);
         clock_controller->clock_enabled = false;
     }

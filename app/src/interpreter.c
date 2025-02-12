@@ -10,6 +10,7 @@
  */
 #include "interpreter.h"
 #include "token.h"
+#include "debug.h"
 
 /**
  * @brief Looks at the current character in a string.
@@ -243,6 +244,8 @@ static TokenType identifierType(Scanner *scanner)
     }
     case 't':
         return checkKeyword(scanner, 1, 5, "oggle", TOKEN_GPIO_TOGGLE);
+    case 'u':
+        return checkKeyword(scanner,  1, 3, "art", TOKEN_UART);
     case 'w':
         return checkKeyword(scanner, 1, 4, "rite", TOKEN_WRITE);
     }
@@ -462,13 +465,14 @@ bool interpret(BoardController *bc, char *source, size_t /*unused*/ length)
         }
     }
 
+#ifdef DEBUG
     // After tokenisation completed
-    // printf("Token count = %d\r\n", sizeTokenVector(tokvec));
-    // for (size_t i = 0; i < sizeTokenVector(tokvec); i++)
-    // {
-    //     print_token(getTokenVector(tokvec, i));
-    // }
-
+    printf("Token count = %d\r\n", sizeTokenVector(tokvec));
+    for (size_t i = 0; i < sizeTokenVector(tokvec); i++)
+    {
+        print_token(getTokenVector(tokvec, i));
+    }
+#endif
     // Check interpretation and parsing.
     bool return_value = parseTokensAndExecute(bc, tokvec);
     deinitTokenVector(tokvec);

@@ -12,6 +12,7 @@
 #define BOARD_CONTROL_H_
 
 // gcclib includes
+#include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -38,6 +39,13 @@ typedef struct BoardController
     size_t                clocks_size;
     size_t                peripherals_size;
 } BoardController;
+
+typedef struct clockExistsReturn
+{
+    bool exists;
+    bool status;
+    size_t index; // only if exists
+} clockExistsReturn;
 
 // Function Prototypes
 BoardController *initBoard(void);

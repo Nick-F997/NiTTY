@@ -879,9 +879,10 @@ static bool uart(BoardController *bc, TokenVector *vec)
         next_token = getTokenVector(vec, 2);
         if (next_token.type == TOKEN_STRING)
         {
-            const char *string_to_send = next_token.start;
-            size_t length = (size_t)next_token.length;
-            uint32_t size_written = writeUARTPort(bc, string_to_send, length);
+            // const char *string_to_send = next_token.start;
+            // size_t length = (size_t)next_token.length;
+            printf("> Sending: \"%.*s\"\r\n", next_token.length, next_token.start);
+            uint32_t size_written = writeUARTPort(bc, next_token.start, next_token.length);
             printf("> UART WROTE %lu BYTES.\r\n", size_written);
             return true;
         }

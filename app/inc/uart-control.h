@@ -34,8 +34,6 @@ typedef struct UARTController {
     GPIOPinController RX;
     GPIOPinController TX;
     uint32_t handle;
-    ring_buffer_t rb;
-    uint8_t *data_buffer;
     int nvic_entry;
 } UARTController;
 

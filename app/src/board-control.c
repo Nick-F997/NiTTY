@@ -134,7 +134,7 @@ static bool uartExists(BoardController *bc, UARTController *current_uart)
     {
         if (bc->peripherals[periph].type == TYPE_UART && bc->peripherals[periph].status)
         {
-            current_uart = &bc->peripherals[periph].peripheral.uart;
+            *current_uart = bc->peripherals[periph].peripheral.uart;
             return true;
         }
     }
@@ -149,16 +149,20 @@ static bool uartExists(BoardController *bc, UARTController *current_uart)
  * @return true clock already created
  * @return false clock not created
  */
-static bool clockExists(BoardController *bc, enum rcc_periph_clken clock)
+static clockExistsReturn clockExists(BoardController *bc, enum rcc_periph_clken clock)
 {
     for (size_t clock_c = 0; clock_c < bc->clocks_count; clock_c++)
     {
-        if (bc->clocks[clock_c].clock == clock)
+        if (bc->clocks[clock_c].clock == clock && bc->clocks[clock_c].clock_enabled)
         {
-            return true;
+            return (clockExistsReturn) {.exists = true, .status = true, .index = clock_c};
+        }
+        if (bc->clocks[clock_c].clock == clock && !bc->clocks[clock_c].clock_enabled)
+        {
+            return (clockExistsReturn) {.exists = true, .status = false, .index = clock_c};
         }
     }
-    return false;
+    return (clockExistsReturn) {.exists = false, .status = false, .index = 0};
 }
 
 /**
@@ -193,13 +197,18 @@ void createDigitalPin(BoardController *bc, uint32_t port, uint32_t pin, enum rcc
                       PeripheralType input_output, uint8_t pupd)
 {
     // if clock is already made and enabled do nothing.
-    bool clock_exists = clockExists(bc, clock);
+    clockExistsReturn clock_exists = clockExists(bc, clock);
 
     // if clock doesn't exist create it and enable it.
-    if (!clock_exists)
+    if (!clock_exists.exists)
     {
         growClocks(bc, clock);
         enableClock(&bc->clocks[bc->clocks_count - 1]);
+    }
+
+    if (clock_exists.exists && !clock_exists.status)
+    {
+        enableClock(&bc->clocks[clock_exists.index]);
     }
 
     // Create peripheral and enable it.
@@ -223,21 +232,30 @@ void createDigitalPin(BoardController *bc, uint32_t port, uint32_t pin, enum rcc
 void createAnalogPin(BoardController *bc, uint32_t port, uint32_t pin, enum rcc_periph_clken clock,
                      uint32_t sample_time, uint32_t adc_port, uint8_t adc_channel)
 {
-    bool clock_exists = clockExists(bc, clock);
+    clockExistsReturn clock_exists = clockExists(bc, clock);
 
     // if clock doesn't exist create it and enable it.
-    if (!clock_exists)
+    if (!clock_exists.exists)
     {
         growClocks(bc, clock);
         enableClock(&bc->clocks[bc->clocks_count - 1]);
     }
 
-    bool adc_clock_exists = clockExists(bc, RCC_ADC1);
+    if (clock_exists.exists && !clock_exists.status)
+    {
+        enableClock(&bc->clocks[clock_exists.index]);
+    }
 
-    if (!adc_clock_exists)
+    clockExistsReturn adc_clock_exists = clockExists(bc, RCC_ADC1);
+
+    if (!adc_clock_exists.exists)
     {
         growClocks(bc, RCC_ADC1);
         enableClock(&bc->clocks[bc->clocks_count - 1]);
+    }
+    if (adc_clock_exists.exists && !adc_clock_exists.status)
+    {
+        enableClock(&bc->clocks[adc_clock_exists.index]);
     }
 
     // Just pass normal ADC1 clock in as adc_clock.
@@ -271,27 +289,43 @@ void createUART(BoardController *bc, uint32_t handle, enum rcc_periph_clken uart
                 uint8_t rx_af_mode, uint8_t tx_af_mode, int nvic_entry)
 {
 
-    bool uart_clock_exists = clockExists(bc, uart_clock);
-    bool rx_clock_exists = clockExists(bc, rx_clock);
-    bool tx_clock_exists = clockExists(bc, tx_clock);
+    clockExistsReturn uart_clock_exists = clockExists(bc, uart_clock);
+    clockExistsReturn rx_clock_exists = clockExists(bc, rx_clock);
+    clockExistsReturn tx_clock_exists = clockExists(bc, tx_clock);
 
-    if (!uart_clock_exists)
+    if (!uart_clock_exists.exists)
     {
         growClocks(bc, uart_clock);
         enableClock(&bc->clocks[bc->clocks_count - 1]);
     }
 
-    if (!rx_clock_exists)
+    if (uart_clock_exists.exists && !uart_clock_exists.status)
+    {
+        enableClock(&bc->clocks[uart_clock_exists.index]);
+    }
+
+    if (!rx_clock_exists.exists)
     {
         growClocks(bc, rx_clock);
         enableClock(&bc->clocks[bc->clocks_count - 1]);
     }
 
-    if (!tx_clock_exists)
+    if (rx_clock_exists.exists && !rx_clock_exists.status)
+    {
+        enableClock(&bc->clocks[rx_clock_exists.index]);
+    }
+
+    if (!tx_clock_exists.exists)
     {
         growClocks(bc, tx_clock);
         enableClock(&bc->clocks[bc->clocks_count - 1]);
     }
+
+    if (tx_clock_exists.exists && !tx_clock_exists.status)
+    {
+        enableClock(&bc->clocks[tx_clock_exists.index]);
+    }
+
     PeripheralController pc =
         createStandardUARTUSART(handle, uart_clock, baudrate, rx_port, tx_port, rx_pin, tx_pin,
                                 rx_clock, tx_clock, rx_af_mode, tx_af_mode, nvic_entry);
@@ -469,8 +503,8 @@ void killPeripheralOrPin(BoardController *bc, uint32_t port, uint32_t pin)
                 (current_periph->peripheral.uart.TX.port == port &&
                  current_periph->peripheral.uart.TX.pin))
             {
-                disableClockWithEnum(bc,current_periph->peripheral.uart.uart_clock);
                 current_periph->disablePeripheral(current_periph);
+                disableClockWithEnum(bc,current_periph->peripheral.uart.uart_clock);
                 return;
             }
         }
@@ -502,12 +536,17 @@ void mutateDigitalToADC(BoardController *bc, uint32_t port, uint32_t pin,
             {
                 current_periph->disablePeripheral(current_periph);
 
-                bool adc_clock_exists = clockExists(bc, RCC_ADC1);
+                clockExistsReturn adc_clock_exists = clockExists(bc, RCC_ADC1);
 
-                if (!adc_clock_exists)
+                if (!adc_clock_exists.exists)
                 {
                     growClocks(bc, RCC_ADC1);
                     enableClock(&bc->clocks[bc->clocks_count - 1]);
+                }
+
+                if (adc_clock_exists.exists && !adc_clock_exists.status)
+                {
+                    enableClock(&bc->clocks[adc_clock_exists.index]);
                 }
 
                 *current_periph = createStandardADCPin(port, pin, clock, RCC_ADC1, sample_time,
@@ -545,7 +584,7 @@ uint16_t actionDigitalPin(BoardController *bc, uint32_t port, uint32_t pin, GPIO
                 {
                     if (action == GPIO_READ)
                     {
-                        uint16_t pin_result = gpio_get(port, pin);
+                        uint16_t pin_result = gpio_get(port, pin) > 0 ? 1 : 0;
                         return pin_result;
                     }
                     return 0;

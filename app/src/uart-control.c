@@ -10,8 +10,13 @@
  */
 #include "uart-control.h"
 #include "libopencm3/stm32/f4/nvic.h"
+#include <stdint.h>
+#include <stdio.h>
 
-static UARTController currently_active_uart = {0U};
+//static volatile UARTController *currently_active_uart = NULL;
+static ring_buffer_t local_rb = {0U}; // the ringbuffer object
+static uint8_t local_data_buffer[RING_BUFFER_SIZE] = {0U}; // buffer in ring buffer.
+static uint32_t current_handle = 0;
 
 /**
  * @brief Low level function to return UART controller
@@ -42,9 +47,10 @@ UARTController createUARTPeripheral(uint32_t uart_handle, enum rcc_periph_clken 
     GPIOPinController tx =
         createGPIOPin(tx_port, tx_pin, tx_clock, mode, tx_af_mode, GPIO_PUPD_NONE);
 
-    ring_buffer_t rb;
-    uint8_t       data_buffer[RING_BUFFER_SIZE] = {0U};
-    coreRingBufferSetup(&rb, data_buffer, RING_BUFFER_SIZE);
+    //ring_buffer_t rb;
+    //uint8_t       data_buffer[RING_BUFFER_SIZE] = {0U};
+    coreRingBufferSetup(&local_rb, local_data_buffer, RING_BUFFER_SIZE);
+    current_handle = uart_handle;
 
     UARTController uart = {
         .handle = uart_handle,
@@ -53,12 +59,10 @@ UARTController createUARTPeripheral(uint32_t uart_handle, enum rcc_periph_clken 
         .nvic_entry = nvic_entry,
         .RX = rx,
         .TX = tx,
-        .data_buffer = data_buffer,
-        .rb = rb,
+        //.data_buffer = data_buffer,
+        //.rb = rb,
     };
 
-    // Just a copy rather than a reference is needed, i think
-    currently_active_uart = uart;
     return uart;
 }
 
@@ -81,14 +85,14 @@ void uart8_isr(void) { general_uart_isr(); }
 void general_uart_isr(void)
 {
     const bool overrun_occured =
-        usart_get_flag(currently_active_uart.handle, USART_FLAG_ORE /* Overrun flag? */) == 1;
+        usart_get_flag(current_handle, USART_FLAG_ORE /* Overrun flag? */) == 1;
     const bool received_data =
-        usart_get_flag(currently_active_uart.handle, USART_FLAG_RXNE /* Recieved data? */) == 1;
+        usart_get_flag(current_handle, USART_FLAG_RXNE /* Recieved data? */) == 1;
 
     if (overrun_occured || received_data)
     {
-        if (!coreRingBufferWrite(&currently_active_uart.rb,
-                                 (uint8_t)usart_recv(currently_active_uart.handle)))
+        if (!coreRingBufferWrite(&local_rb,
+                                 (uint8_t)usart_recv(current_handle)))
         {
             // Handle failure. Update buffer size.
         }
@@ -116,6 +120,7 @@ void currentUartWrite(UARTController uart, uint8_t *data, uint32_t len)
  */
 void currentUartWriteByte(UARTController uart, uint8_t byte)
 {
+    printf("TXE: %u\r\n", (USART_SR(uart.handle) & USART_SR_TXE));
     usart_send_blocking(uart.handle, (uint16_t)byte);
 }
 
@@ -136,7 +141,7 @@ uint32_t currentUartRead(UARTController uart, uint8_t *data, uint32_t len)
 
     for (uint32_t num_bytes = 0; num_bytes < len; num_bytes++)
     {
-        if (!coreRingBufferRead(&uart.rb, &data[num_bytes]))
+        if (!coreRingBufferRead(&local_rb, &data[num_bytes]))
         {
             return num_bytes; // num_bytes is how many bytes we've read.
         }
@@ -163,4 +168,4 @@ uint8_t currentUartReadByte(UARTController uart)
  * @return true if USART buffer has data
  * @return false if USART buffer does not have data.
  */
-bool currentUartDataAvailable(UARTController uart) { return !coreRingBufferEmpty(&uart.rb); }
+bool currentUartDataAvailable(UARTController uart) { return !coreRingBufferEmpty(&local_rb); }

@@ -91,7 +91,7 @@ static void repl(BoardController *bc)
             line[count > 0 ? count - 1 : 0] = '\0';
             if (!interpret(bc, line, count))
             {
-                printf("Could not interpret line: \"%s\".\r\n", line);
+                printf("> Failed to execute line: \"%s\".\r\n", line);
             }
             clearLine(line, count);
             count = 0;
