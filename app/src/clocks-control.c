@@ -11,7 +11,7 @@
 #include "clocks-control.h"
 #include "debug.h"
 
-#ifdef DEBUG
+#ifdef CLOCK_DEBUG
 #include <stdio.h>
 #endif
 
@@ -35,8 +35,8 @@ void enableClock(ClockController *clock_controller)
 {
     if (!clock_controller->clock_enabled)
     {
-        #ifdef DEBUG
-        printf("Clock enabled.\r\n");
+        #ifdef CLOCK_DEBUG
+        printf("DEBUG: Clock enabled.\r\n");
         #endif
         rcc_periph_clock_enable(clock_controller->clock);
         clock_controller->clock_enabled = true;
@@ -52,8 +52,8 @@ void disableClock(ClockController *clock_controller)
 {
     if (clock_controller->clock_enabled)
     {
-        #ifdef DEBUG
-        printf("Clock disabled.\r\n");
+        #ifdef CLOCK_DEBUG
+        printf("DEBUG: Clock disabled.\r\n");
         #endif
         rcc_periph_clock_disable(clock_controller->clock);
         clock_controller->clock_enabled = false;

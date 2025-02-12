@@ -465,9 +465,9 @@ bool interpret(BoardController *bc, char *source, size_t /*unused*/ length)
         }
     }
 
-#ifdef DEBUG
+#ifdef SCAN_DEBUG
     // After tokenisation completed
-    printf("Token count = %d\r\n", sizeTokenVector(tokvec));
+    printf("DEBUG: Token count = %d\r\n", sizeTokenVector(tokvec));
     for (size_t i = 0; i < sizeTokenVector(tokvec); i++)
     {
         print_token(getTokenVector(tokvec, i));

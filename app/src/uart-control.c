@@ -11,7 +11,13 @@
 #include "uart-control.h"
 #include "libopencm3/stm32/f4/nvic.h"
 #include <stdint.h>
+
+#include "debug.h"
+
+#ifdef UART_DEBUG
 #include <stdio.h>
+#endif
+
 
 //static volatile UARTController *currently_active_uart = NULL;
 static ring_buffer_t local_rb = {0U}; // the ringbuffer object
@@ -120,7 +126,9 @@ void currentUartWrite(UARTController uart, uint8_t *data, uint32_t len)
  */
 void currentUartWriteByte(UARTController uart, uint8_t byte)
 {
-    printf("TXE: %u\r\n", (USART_SR(uart.handle) & USART_SR_TXE));
+    #ifdef UART_DEBUG
+    printf("DEBUG: TXE = %u\r\n", (USART_SR(uart.handle) & USART_SR_TXE));
+    #endif
     usart_send_blocking(uart.handle, (uint16_t)byte);
 }
 
