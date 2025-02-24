@@ -108,8 +108,15 @@ static Token makeToken(Scanner *scanner, TokenType type)
 {
     Token token;
     token.type = type;
-    token.start = scanner->start;
-    token.length = (int)(scanner->current - scanner->start);
+    if (type == TOKEN_STRING)
+    {
+        token.start = scanner->start + 1;
+        token.length = (int)(scanner->current - scanner->start - 2);
+    }
+    else {
+        token.start = scanner->start;
+        token.length = (int)(scanner->current - scanner->start);
+    }
     return token;
 }
 

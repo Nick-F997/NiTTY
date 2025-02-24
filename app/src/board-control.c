@@ -679,6 +679,10 @@ uint32_t readUARTPort(BoardController *bc, char *data, size_t len)
             char byte = (char)currentUartReadByte(uart_to_read);
             data[count++] = byte; 
         }
+        if (count != len)
+        {
+            data[count] = '\0';
+        }
         return (uint32_t)count;      
     }
     else {

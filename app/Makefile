@@ -57,11 +57,13 @@ CSTD		?= -std=c99
 VERSION_MJR = 1
 VERSION_MIN = 0
 GIT_VERSION = $(shell git rev-parse --short HEAD)
+GIT_BRANCH = $(shell git rev-parse --abbrev-ref HEAD)
 
 DEFS +=  -D VERSION_MJR=\"$(VERSION_MJR)\" 
 DEFS +=  -D VERSION_MIN=\"$(VERSION_MIN)\" 
 DEFS +=  -D GIT_VERSION=\"$(GIT_VERSION)\"
-# DEFS +=  -D DEBUG # Uncomment line for debug 
+DEFS +=  -D GIT_BRANCH=\"$(GIT_BRANCH)\"
+#DEFS +=  -D DEBUG # Uncomment line for debug 
 ###############################################################################
 # Source files
 

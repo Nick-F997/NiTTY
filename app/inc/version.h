@@ -23,4 +23,8 @@
 #define GIT_VERSION "0"
 #endif
 
+#ifndef GIT_BRANCH
+#define GIT_BRANCH "Unknown"
+#endif
+
 #endif

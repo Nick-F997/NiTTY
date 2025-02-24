@@ -61,7 +61,7 @@ static void print_logo(void)
     printf("------------ NiTTY ------------\r\n");
     #endif
     printf(" * Version: %s.%s\r\n", VERSION_MJR, VERSION_MIN);
-    printf(" * Git commit: %s\r\n", GIT_VERSION);
+    printf(" * Git commit: %s (%s)\r\n", GIT_VERSION, GIT_BRANCH);
     
     
     printf("Please see documentation for any help!\r\n");
