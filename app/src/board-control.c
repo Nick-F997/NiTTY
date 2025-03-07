@@ -575,6 +575,9 @@ uint16_t actionDigitalPin(BoardController *bc, uint32_t port, uint32_t pin, GPIO
         PeripheralController *current_periph = &bc->peripherals[periph];
         if (current_periph->type == TYPE_GPIO_INPUT || current_periph->type == TYPE_GPIO_OUTPUT)
         {
+            if (!current_periph->status) {
+                continue;
+            }
             if (current_periph->peripheral.gpio.port == port &&
                 current_periph->peripheral.gpio.pin == pin)
             {
