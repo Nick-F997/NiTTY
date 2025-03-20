@@ -10,11 +10,16 @@ The scripting language lacks many features, but may come to include features con
 ```
 input <port/pin identifier> <pupd resistor config> -> Creates an GPI on the provided pin.
 output <port/pin identifier> <pupd resistor config> -> Creates an GPO on the provided pin.
+uart <RX port/pin identifier> <TX port/pin identifier> <baudrate> -> create a serial port on pins.
+adc <port/pin identifier> -> create an ADC on the provided pin.
 
 set <list of port/pin identifiers> -> Sets a list of GPIO pins.
 reset <list of port/pin identifiers> -> Resets a list of GPIO pins.
 toggle <list of port/pin identifiers> -> Toggles a list of GPIO pins.
-read <list of port/pin identifiers> -> Reads a list of GPIO pins.
+read <list of port/pin identifiers> -> Reads a list of GPIO/ADC pins.
+
+uart read -> read from the currently active UART port
+uart write <string> -> write the string to the currently active UART port.
 ```
 
 The line to be executed must always start with a keyword. As an example, say you want to set Port A pin 6 to be an input with a pulldown resistor:
@@ -50,3 +55,6 @@ Ensure you have the `arm toolchain` installed and is accessible from the shell P
 In order to flash the project to a development board, a program such as `st-utils` will be required. Settings for Visual Studio Code can be found in the `.vscode` directory.
 
 This project was initially developed on GNU/Linux Debian 12 (bookworm) with kernel version 6.1.0. While it has not been tested on Windows/Mac, I assume it will work as long as you have Make, arm-gcc, and some way of flashing STM32 development boards. I will not be responding to any requests to get this working on other operating systems - this is an exercise for the reader!
+
+## Using NiTTY
+***Nitty is not finished***. It does not have loops, variables, conditionals, or any typically useful programming features (yet!). If you want to use it, I recommend using the Python wrapper provided in the `NiTTY-testing` repository (the file is called `nitty_wrapper.py`). This requires the NiTTY system to be connected by serial to a host computer running Python. When I get around to it, I'll make it into a proper Python package for ease of use. 
