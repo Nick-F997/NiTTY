@@ -12,6 +12,7 @@
 #include "board-control.h"
 #include "clocks-control.h"
 #include "libopencm3/stm32/f4/rcc.h"
+#include "local-memory.h"
 #include "peripheral-controller.h"
 #include "uart-control.h"
 #include <stddef.h>
@@ -67,7 +68,8 @@ void deinitBoard(BoardController *bc)
 
 /**
  * @brief static function to grow the size of the .clocks member and add a
- * new element.
+ * new element. Doesn't reallocate as there's a limited number of clocks, and we always check to see
+ * if one is available before allocating another one.
  *
  * @param bc board control object
  * @param clock clock to be added
@@ -84,13 +86,41 @@ static void growClocks(BoardController *bc, enum rcc_periph_clken clock)
 }
 
 /**
- * @brief Grows and adds new element to .peripherals member
+ * @brief Grows and adds new element to .peripherals member. If peripherals is huge (i.e., about to
+ * suck my memory dry and zip it up when its done) it reallocates the memory, getting rid of any
+ * discarded peripherals (status == false).
  *
  * @param bc board control structure
  * @param periph peripheral to be added
  */
 static void growPeripherals(BoardController *bc, PeripheralController periph)
 {
+    if (bc->peripherals_count > 90)
+    {
+        size_t                peripherals_size = 4;
+        size_t                peripherals_count = 0;
+        PeripheralController *periphs_new =
+            (PeripheralController *)malloc(sizeof(PeripheralController) * peripherals_size);
+        for (size_t periph_i = 0; periph_i < bc->peripherals_count; periph_i++)
+        {
+            if (peripherals_size == peripherals_count)
+            {
+                size_t oldSize = peripherals_size;
+                peripherals_size = GROW_CAPACITY(oldSize);
+                periphs_new =
+                    GROW_ARRAY(PeripheralController, periphs_new, oldSize, peripherals_size);
+            }
+
+            if (bc->peripherals[periph_i].status)
+            {
+                periphs_new[peripherals_count++] = bc->peripherals[periph_i];
+            }
+        }
+        FREE_ARRAY(PeripheralType, bc->peripherals, bc->peripherals_count);
+        bc->peripherals_count = peripherals_count;
+        bc->peripherals_size = peripherals_size;
+        bc->peripherals = periphs_new;
+    }
     if (bc->peripherals_count == bc->peripherals_size)
     {
         size_t oldSize = bc->peripherals_size;
@@ -122,11 +152,11 @@ static int adcExists(BoardController *bc)
 
 /**
  * @brief Checks to see if a UART is currently being used.
- * 
+ *
  * @param bc Board controller object.
  * @param current_uart return value of the uart.
- * @return true 
- * @return false 
+ * @return true
+ * @return false
  */
 static bool uartExists(BoardController *bc, UARTController *current_uart)
 {
@@ -155,14 +185,14 @@ static clockExistsReturn clockExists(BoardController *bc, enum rcc_periph_clken 
     {
         if (bc->clocks[clock_c].clock == clock && bc->clocks[clock_c].clock_enabled)
         {
-            return (clockExistsReturn) {.exists = true, .status = true, .index = clock_c};
+            return (clockExistsReturn){.exists = true, .status = true, .index = clock_c};
         }
         if (bc->clocks[clock_c].clock == clock && !bc->clocks[clock_c].clock_enabled)
         {
-            return (clockExistsReturn) {.exists = true, .status = false, .index = clock_c};
+            return (clockExistsReturn){.exists = true, .status = false, .index = clock_c};
         }
     }
-    return (clockExistsReturn) {.exists = false, .status = false, .index = 0};
+    return (clockExistsReturn){.exists = false, .status = false, .index = 0};
 }
 
 /**
@@ -459,7 +489,7 @@ void mutateADCToDigital(BoardController *bc, uint32_t port, uint32_t pin,
 
 /**
  * @brief Function to disable a pin entirely
- * 
+ *
  * @param bc Board controller
  * @param port port of pin to disable
  * @param pin pin to disable
@@ -504,7 +534,7 @@ void killPeripheralOrPin(BoardController *bc, uint32_t port, uint32_t pin)
                  current_periph->peripheral.uart.TX.pin))
             {
                 current_periph->disablePeripheral(current_periph);
-                disableClockWithEnum(bc,current_periph->peripheral.uart.uart_clock);
+                disableClockWithEnum(bc, current_periph->peripheral.uart.uart_clock);
                 return;
             }
         }
@@ -575,7 +605,8 @@ uint16_t actionDigitalPin(BoardController *bc, uint32_t port, uint32_t pin, GPIO
         PeripheralController *current_periph = &bc->peripherals[periph];
         if (current_periph->type == TYPE_GPIO_INPUT || current_periph->type == TYPE_GPIO_OUTPUT)
         {
-            if (!current_periph->status) {
+            if (!current_periph->status)
+            {
                 continue;
             }
             if (current_periph->peripheral.gpio.port == port &&
@@ -667,7 +698,7 @@ uint16_t actionAnalogPin(BoardController *bc, uint32_t port, uint32_t pin)
 
 /**
  * @brief Read whatever is in the current UART data buffer up to length provided
- * 
+ *
  * @param bc Board controller object
  * @param data array of return data.
  * @param len max length of read.
@@ -676,40 +707,45 @@ uint16_t actionAnalogPin(BoardController *bc, uint32_t port, uint32_t pin)
 uint32_t readUARTPort(BoardController *bc, char *data, size_t len)
 {
     UARTController uart_to_read;
-    if (uartExists(bc, &uart_to_read)) {
+    if (uartExists(bc, &uart_to_read))
+    {
         size_t count = 0;
-        while (currentUartDataAvailable(uart_to_read) && count < len) {
+        while (currentUartDataAvailable(uart_to_read) && count < len)
+        {
             char byte = (char)currentUartReadByte(uart_to_read);
-            data[count++] = byte; 
+            data[count++] = byte;
         }
         if (count != len)
         {
             data[count] = '\0';
         }
-        return (uint32_t)count;      
+        return (uint32_t)count;
     }
-    else {
+    else
+    {
         printf("> Error: No uart exists!\r\n");
         return 0;
     }
 }
 
 /**
- * @brief Function to write to current UART port. 
- * 
+ * @brief Function to write to current UART port.
+ *
  * @param bc board controller object
  * @param data data to write
  * @param len length of data
- * @return uint32_t length written, should be = to len, 0 if not written. 
+ * @return uint32_t length written, should be = to len, 0 if not written.
  */
 uint32_t writeUARTPort(BoardController *bc, const char *data, size_t len)
 {
     UARTController uart_to_write;
-    if (uartExists(bc, &uart_to_write)) {
+    if (uartExists(bc, &uart_to_write))
+    {
         currentUartWrite(uart_to_write, (uint8_t *)data, len);
         return len;
     }
-    else {
+    else
+    {
         printf("> Error: No uart exists!\r\n");
         return 0;
     }
